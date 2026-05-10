@@ -1,7 +1,7 @@
 import { query } from '../db/client';
 
-const INTERATIONS = 100000000;
-const BATCH_SIZE = 7500;
+const INTERATIONS = 1000;
+const BATCH_SIZE = 75;
 async function batchInsertMeasurement() {
   const start = performance.now();
   try {
