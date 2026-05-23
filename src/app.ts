@@ -28,7 +28,7 @@ app.use(
   }),
 );
 app.use(express.json());
-app.use('/api', routes);
+app.use('/api/v1', routes);
 app.use(errorHandler);
 
 routes.get('/ping', (_req, res) => {
@@ -81,7 +81,13 @@ routes.get('/redirect', async (req, res) => {
     `,
     [code],
   );
-  const originalUrl = result.rows[0].original_url;
+  const originalUrl = result.rows[0]?.original_url;
+  if (!originalUrl) {
+    return res.status(400).json({
+      status: false,
+      message: 'No url exists with this code',
+    });
+  }
   return res.redirect(originalUrl);
 });
 
