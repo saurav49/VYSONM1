@@ -108,7 +108,7 @@ curl -i "http://localhost:3000/api/v1/redirect?code=generatedCode"
 
 When the short code exists, the endpoint responds with an HTTP redirect to the stored original URL. Otherwise, the API returns a `404 Not Found` response.
 
-## Optional Data Seed Script
+## Optional Data Seed Script (Already created for module 1)
 
 The repository includes a bulk insert script intended for database/performance testing. It inserts up to `100,000,000` generated URL rows, so it is not required to test the two API endpoints and can take substantial time and disk space.
 
