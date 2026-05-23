@@ -83,9 +83,9 @@ routes.get('/redirect', async (req, res) => {
   );
   const originalUrl = result.rows[0]?.original_url;
   if (!originalUrl) {
-    return res.status(400).json({
+    return res.status(404).json({
       status: false,
-      message: 'No url exists with this code',
+      message: 'URL not found',
     });
   }
   return res.redirect(originalUrl);

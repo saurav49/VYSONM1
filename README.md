@@ -51,7 +51,9 @@ The API endpoint `/api/v1`.
    docker start url-shortener-postgres
    ```
 
-3. Create a `.env` file in the repository root:
+3. Create a `.env` file in the repository root
+   OR you can also do `cp .env.example .env`
+   :
 
    ```env
    PORT=3000
@@ -104,7 +106,7 @@ Example response:
 curl -i "http://localhost:3000/api/v1/redirect?code=generatedCode"
 ```
 
-When the code exists, the endpoint responds with an HTTP redirect to the stored original URL, otherwise an error message pops up on the screen
+When the short code exists, the endpoint responds with an HTTP redirect to the stored original URL. Otherwise, the API returns a `404 Not Found` response.
 
 ## Optional Data Seed Script
 
