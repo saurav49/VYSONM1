@@ -60,6 +60,28 @@ routes.post('/shorten', async (req, res) => {
       },
     });
   } catch (e) {
+    const error = e as {
+      code: string;
+      meta: {
+        modelName: string;
+      };
+    };
+    if (error.code === 'P2002' && error.meta?.modelName === 'UrlShortener') {
+      const reqUrl = await prisma.urlShortener.findUnique({
+        where: {
+          originalUrl: req.body.originalUrl,
+        },
+      });
+      if (reqUrl) {
+        return res.status(200).json({
+          status: true,
+          data: {
+            originalUrl: reqUrl.originalUrl,
+            shortCode: reqUrl.shortCode,
+          },
+        });
+      }
+    }
     return res.status(500).json({
       status: false,
       error: e,
@@ -74,15 +96,12 @@ routes.get('/redirect', async (req, res) => {
       message: 'Code is required',
     });
   }
-  const result = await prisma.urlShortener.findMany({
+  const result = await prisma.urlShortener.findUnique({
     where: {
       shortCode: code as string,
     },
   });
-  const originalUrl =
-    result && Array.isArray(result) && result.length > 0
-      ? result[0]?.originalUrl
-      : undefined;
+  const originalUrl = result ? result?.originalUrl : undefined;
   if (!originalUrl) {
     return res.status(404).json({
       status: false,

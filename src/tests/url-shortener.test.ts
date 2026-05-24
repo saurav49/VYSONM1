@@ -4,7 +4,7 @@ import { describe, it, expect } from 'bun:test';
 
 describe('URL Shortener integration test', () => {
   it('should shorten the url and redirect correctly', async () => {
-    const originalUrl = 'https://chatgpt.com/';
+    const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
     const shortenerResponse = await request(app).post('/api/v1/shorten').send({
       originalUrl,
     });
