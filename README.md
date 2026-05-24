@@ -135,6 +135,22 @@ Some findings:
 3. DNS+dialup took on average 4.7ms
 4. DNS lookup took on average 0.88ms (since localhost so much faster)
 
+# Load Testing Results Summary
+
+## For /shorten endpoint
+
+| Concurrency | P50      | P90      | P95      | P99      |
+| ----------- | -------- | -------- | -------- | -------- |
+| 50          | 247.56ms | 258.77ms | 258.81ms | 258.97ms |
+| 100         | 179.06ms | 196.31ms | 198.85ms | 199.49ms |
+| 200         | 283.55ms | 320.51ms | 324.29ms | 329.58ms |
+| 500         | 251.72ms | 319.92ms | 331.30ms | 338.21ms |
+| 1000        | 353.73ms | 499.14ms | 514.18ms | 529.91ms |
+| 10K         | 0.65s    | 1.07s    | 1.12s    | 2.08s    |
+| 1M          | 0.85s    | 0.98s    | 0.98s    | 4.86s    |
+
+### chart: https://docs.google.com/spreadsheets/d/1oO-rW8SEZVuGvK_rxKl3ZFB85mJu7tFPGxL-cYiBbhE/edit?usp=sharing
+
 ## For /redirect endpoint
 
 ```
