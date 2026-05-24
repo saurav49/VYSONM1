@@ -74,7 +74,7 @@ describe('URL Shortener delete short code', () => {
     expect(shortCode).toBeDefined();
 
     const deleteResponse = await request(app).delete(
-      `/api/v1/remove-short-code?code=${shortCode}`,
+      `/api/v1/short-codes/${shortCode}`,
     );
 
     expect(deleteResponse.status).toBe(200);

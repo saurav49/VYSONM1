@@ -113,9 +113,9 @@ routes.get('/redirect', async (req, res) => {
 
 // [Q9] What if we want to delete a short code? Add this functionality using a DELETE method. Which endpoint would suit better? /shorten or /redirect or something else? Write tests too.
 
-routes.delete('/remove-short-code', async (req, res) => {
+routes.delete('/short-codes/:code', async (req, res) => {
   try {
-    const { code } = req.query;
+    const { code } = req.params;
     if (!code) {
       return res.status(400).json({
         status: false,
