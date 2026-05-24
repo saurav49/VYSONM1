@@ -111,6 +111,33 @@ routes.get('/redirect', async (req, res) => {
   return res.redirect(originalUrl);
 });
 
+// [Q9] What if we want to delete a short code? Add this functionality using a DELETE method. Which endpoint would suit better? /shorten or /redirect or something else? Write tests too.
+
+routes.delete('/remove-short-code', async (req, res) => {
+  try {
+    const { code } = req.query;
+    if (!code) {
+      return res.status(400).json({
+        status: false,
+        message: 'Code is required',
+      });
+    }
+    await prisma.urlShortener.delete({
+      where: {
+        shortCode: code as string,
+      },
+    });
+    return res.status(200).json({
+      status: true,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+
 // routes.get('/get-db-info', async (_req, res) => {
 //   const r = await query(
 //     `SELECT pg_size_pretty(pg_total_relation_size('url_shortener'));`,
