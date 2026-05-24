@@ -108,6 +108,14 @@ Example response:
 }
 ```
 
+### Redirect Using a Short Code
+
+```bash
+curl -i "http://localhost:3000/api/v1/redirect?code=generatedCode"
+```
+
+When the short code exists, the endpoint responds with an HTTP redirect to the stored original URL. Otherwise, the API returns a `404 Not Found` response.
+
 # Load Testing
 
 ## For /shorten endpoint
@@ -135,22 +143,6 @@ Some findings:
 3. DNS+dialup took on average 4.7ms
 4. DNS lookup took on average 0.88ms (since localhost so much faster)
 
-# Load Testing Results Summary
-
-## For /shorten endpoint
-
-| Concurrency | P50      | P90      | P95      | P99      |
-| ----------- | -------- | -------- | -------- | -------- |
-| 50          | 247.56ms | 258.77ms | 258.81ms | 258.97ms |
-| 100         | 179.06ms | 196.31ms | 198.85ms | 199.49ms |
-| 200         | 283.55ms | 320.51ms | 324.29ms | 329.58ms |
-| 500         | 251.72ms | 319.92ms | 331.30ms | 338.21ms |
-| 1000        | 353.73ms | 499.14ms | 514.18ms | 529.91ms |
-| 10K         | 0.65s    | 1.07s    | 1.12s    | 2.08s    |
-| 1M          | 0.85s    | 0.98s    | 0.98s    | 4.86s    |
-
-### chart: https://docs.google.com/spreadsheets/d/1oO-rW8SEZVuGvK_rxKl3ZFB85mJu7tFPGxL-cYiBbhE/edit?usp=sharing
-
 ## For /redirect endpoint
 
 ```
@@ -174,13 +166,35 @@ Some findings:
 3. DNS+dialup took on average 3.9ms
 4. DNS lookup took on average 1.08ms (since localhost so much faster)
 
-### Redirect Using a Short Code
+# Load Testing Results Summary
 
-```bash
-curl -i "http://localhost:3000/api/v1/redirect?code=generatedCode"
-```
+## For /shorten endpoint
 
-When the short code exists, the endpoint responds with an HTTP redirect to the stored original URL. Otherwise, the API returns a `404 Not Found` response.
+| Concurrency | Success |     Avg |   p50 |   p90 |   p95 |   p99 |
+| ----------: | ------: | ------: | ----: | ----: | ----: | ----: |
+|          50 |    100% |   247ms | 247ms | 258ms | 258ms | 258ms |
+|         100 |    100% |   176ms | 179ms | 196ms | 198ms | 199ms |
+|         200 |    100% |   270ms | 283ms | 320ms | 324ms | 329ms |
+|         500 |    100% |   248ms | 251ms | 319ms | 331ms | 337ms |
+|        1000 |    100% |   356ms | 353ms | 499ms | 514ms | 528ms |
+|      10,000 |     25% | invalid | 658ms | 1.07s | 1.12s | 2.08s |
+|   1,000,000 |    2.2% | invalid | 858ms | 963ms | 983ms | 2.95s |
+
+### chart: https://docs.google.com/spreadsheets/d/1oO-rW8SEZVuGvK_rxKl3ZFB85mJu7tFPGxL-cYiBbhE/edit?usp=sharing
+
+## For /redirect endpoint
+
+| Concurrency | Success Rate |     Avg |   p50 |   p90 |   p95 |   p99 |
+| ----------- | -----------: | ------: | ----: | ----: | ----: | ----: |
+| 50          |         100% |   186ms | 187ms | 191ms | 191ms | 192ms |
+| 100         |         100% |   130ms | 132ms | 139ms | 139ms | 142ms |
+| 200         |         100% |   130ms | 131ms | 142ms | 143ms | 144ms |
+| 500         |         100% |   174ms | 174ms | 208ms | 212ms | 215ms |
+| 1000        |         100% |   298ms | 306ms | 371ms | 383ms | 389ms |
+| 10,000      |          25% | invalid | 532ms | 688ms | 700ms | 1.09s |
+| 1,000,000   |           3% | invalid | 710ms | 898ms | 925ms | 1.89s |
+
+### chart: https://docs.google.com/spreadsheets/d/1GM1eyY_tmzvEwq5OaCbHrcVj8p6MmXgw7Cq-HePnpQQ/edit?usp=sharing
 
 ## Optional Data Seed Script (Already created for module 1)
 
