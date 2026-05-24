@@ -1,10 +1,8 @@
 import dotenv from 'dotenv';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { insertIntoTable } from './scripts/insertIntoTable';
-import { batchInsert } from './scripts/batchInsert';
 import { nanoid } from 'nanoid';
 import cors from 'cors';
-import { query } from './config/db';
+import { prisma } from './lib/prisma';
 
 dotenv.config();
 
@@ -48,15 +46,17 @@ routes.post('/shorten', async (req, res) => {
     }
     let shortCode = '';
     shortCode = nanoid(10);
-    await insertIntoTable({
-      original_url: originalUrl,
-      short_code: shortCode,
+    const response = await prisma.urlShortener.create({
+      data: {
+        originalUrl,
+        shortCode,
+      },
     });
     return res.status(201).json({
       status: true,
       data: {
-        originalUrl,
-        shortCode,
+        originalUrl: response.originalUrl,
+        shortCode: response.shortCode,
       },
     });
   } catch (e) {
@@ -74,14 +74,15 @@ routes.get('/redirect', async (req, res) => {
       message: 'Code is required',
     });
   }
-  const result = await query(
-    `SELECT *
-    FROM url_shortener
-    WHERE short_code = $1
-    `,
-    [code],
-  );
-  const originalUrl = result.rows[0]?.original_url;
+  const result = await prisma.urlShortener.findMany({
+    where: {
+      shortCode: code as string,
+    },
+  });
+  const originalUrl =
+    result && Array.isArray(result) && result.length > 0
+      ? result[0]?.originalUrl
+      : undefined;
   if (!originalUrl) {
     return res.status(404).json({
       status: false,

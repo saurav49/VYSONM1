@@ -9,5 +9,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "types": ["bun"]
-  }
+  },
+  "include": ["src/**/*.ts"]
 }
