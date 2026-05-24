@@ -78,6 +78,14 @@ The API endpoint `/api/v1`.
 
    The server runs at `http://localhost:3000`.
 
+## Run Tests
+
+Make sure PostgreSQL is running.
+
+```bash
+bun test
+```
+
 ## API Usage
 
 ### Shorten a URL
