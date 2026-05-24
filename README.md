@@ -108,11 +108,12 @@ Example response:
 }
 ```
 
-## Load Testing
+# Load Testing
 
-For /shorten endpoint
+## For /shorten endpoint
 
-```oha -m POST -n 10 -c 10 \
+```
+oha -m POST -n 10 -c 10 \
   -H "Content-Type: application/json" \
   -d '{"originalUrl": "https://terminaltrove.com/oha/"}' \
   http://localhost:3000/api/v1/shorten
@@ -134,9 +135,10 @@ Some findings:
 3. DNS+dialup took on average 4.7ms
 4. DNS lookup took on average 0.88ms (since localhost so much faster)
 
-For /redirect endpoint
+## For /redirect endpoint
 
-```oha --redirect 0 -n 10 -c 10 \
+```
+oha --redirect 0 -n 10 -c 10 \
   "http://localhost:3000/api/v1/redirect?code=vmHkU6cyx0"
 ```
 
