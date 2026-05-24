@@ -108,6 +108,54 @@ Example response:
 }
 ```
 
+## Load Testing
+
+For /shorten endpoint
+
+```oha -m POST -n 10 -c 10 \
+  -H "Content-Type: application/json" \
+  -d '{"originalUrl": "https://terminaltrove.com/oha/"}' \
+  http://localhost:3000/api/v1/shorten
+```
+
+Results:
+
+| Percentile | Latency   |
+| ---------- | --------- |
+| P50        | 165.55 ms |
+| P90        | 168.32 ms |
+| P95        | 168.32 ms |
+| P99        | 168.32 ms |
+
+Some findings:
+
+1. On an average, the request take 165.58ms
+2. Each request size: 98B, total data (accross all request): 960B
+3. DNS+dialup took on average 4.7ms
+4. DNS lookup took on average 0.88ms (since localhost so much faster)
+
+For /redirect endpoint
+
+```oha --redirect 0 -n 10 -c 10 \
+  "http://localhost:3000/api/v1/redirect?code=vmHkU6cyx0"
+```
+
+Results:
+
+| Percentile | Latency   |
+| ---------- | --------- |
+| P50        | 134.13 ms |
+| P90        | 137.16 ms |
+| P95        | 137.16 ms |
+| P99        | 137.14 ms |
+
+Some findings:
+
+1. On an average, the request take 134.01ms
+2. Each request size: 42 B, total data (accross all request): 420 b
+3. DNS+dialup took on average 3.9ms
+4. DNS lookup took on average 1.08ms (since localhost so much faster)
+
 ### Redirect Using a Short Code
 
 ```bash
