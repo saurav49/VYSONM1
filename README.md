@@ -208,6 +208,16 @@ Some findings:
 
 ## Deployed
 
+## For /shorten endpoint
+
+| Concurrency | Success Rate |      Avg |      P50 |      P90 |      P99 |
+| ----------: | -----------: | -------: | -------: | -------: | -------: |
+|          10 |         100% | 1.28 sec | 1.25 sec | 1.91 sec | 1.91 sec |
+|         100 |         100% | 1.05 sec | 1.02 sec | 1.12 sec | 1.60 sec |
+|         500 |         100% | 1.38 sec | 1.39 sec | 1.59 sec | 1.92 sec |
+|        1000 |         100% | 2.10 sec | 1.85 sec | 3.14 sec | 3.38 sec |
+|       10000 |          20% | 4.03 sec | 4.00 sec | 5.62 sec | 9.88 sec |
+
 ## For /redirect endpoint
 
 | Concurrency | Success Rate |   Avg |   p50 |   p90 |   p95 |   p99 |
