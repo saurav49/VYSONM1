@@ -8,6 +8,8 @@ export default defineConfig({
   },
   datasource: {
     // Client generation does not connect to the database during image builds.
-    url: 'postgresql://postgres:postgres@localhost:5432/postgres',
+    url:
+      process.env.DATABASE_URL ??
+      'postgresql://postgres:postgres@localhost:5432/postgres',
   },
 });
