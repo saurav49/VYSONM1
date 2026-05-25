@@ -80,10 +80,20 @@ The API endpoint `/api/v1`.
 
 ## Run Tests
 
-Make sure PostgreSQL is running.
+Make sure PostgreSQL is running and the database table has been created.
+
+The integration tests verify:
+
+- A created short URL redirects to its original URL
+- A duplicate URL returns the same short code
+- An unknown short code returns `404`
+- A short code can be deleted
+- A missing original URL returns `400`
+- An invalid original URL returns `400`
+- A missing redirect code returns `400`
 
 ```bash
-bun test
+bun test src/tests/url-shortener.test.ts
 ```
 
 ## API Usage

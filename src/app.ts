@@ -44,6 +44,13 @@ routes.post('/shorten', async (req, res) => {
         message: 'Original url is required',
       });
     }
+    const isValidUrl = URL.canParse(originalUrl);
+    if (!isValidUrl) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid url',
+      });
+    }
     let shortCode = '';
     shortCode = nanoid(10);
     const response = await prisma.urlShortener.create({

@@ -23,7 +23,6 @@ describe('URL Shortener integration test', () => {
 });
 
 // [Q7] What happens if the same URL is sent again? Handle this case of duplicate URLs. Write a test case that generates a random URL and sends it twice to the API. The same short code should be returned.
-
 describe('URL Shortener duplicate test', () => {
   it('should handle same url and return the same code correctly', async () => {
     const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
@@ -48,7 +47,6 @@ describe('URL Shortener duplicate test', () => {
 });
 
 // [Q8] What happens when you try to fetch a short code that doesn’t exist? Find out which http status code would suit best here. Add this as a test as well.
-
 describe('URL Shortener invalid code test', () => {
   it('should handle the invalid short code', async () => {
     const code = 'abc';
@@ -61,7 +59,6 @@ describe('URL Shortener invalid code test', () => {
 });
 
 // delete short code
-
 describe('URL Shortener delete short code', () => {
   it('should handle the deletion of short code', async () => {
     const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
@@ -78,5 +75,39 @@ describe('URL Shortener delete short code', () => {
     );
 
     expect(deleteResponse.status).toBe(200);
+  });
+});
+
+// missing original url
+describe('URL Shortener missing original url test', () => {
+  it('should check if the url provided is correct', async () => {
+    const originalUrl = ``;
+    const shortenerResponse = await request(app).post('/api/v1/shorten').send({
+      originalUrl,
+    });
+
+    expect(shortenerResponse.status).toBe(400);
+  });
+});
+
+// invalid original url
+describe('URL Shortener invalid original url test', () => {
+  it('should check if the url provided is valid', async () => {
+    const originalUrl = `vyson`;
+    const shortenerResponse = await request(app).post('/api/v1/shorten').send({
+      originalUrl,
+    });
+
+    expect(shortenerResponse.status).toBe(400);
+  });
+});
+
+// code not passed in redirect url
+describe('URL Shortener code not passed', () => {
+  it('should pass the code in redirect url', async () => {
+    const code = ``;
+    const res = await request(app).get(`/api/v1/redirect?code=${code}`);
+
+    expect(res.status).toBe(400);
   });
 });
