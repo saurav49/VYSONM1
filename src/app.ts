@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { nanoid } from 'nanoid';
+import { randomBytes } from 'node:crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
 
@@ -52,7 +52,7 @@ routes.post('/shorten', async (req, res) => {
       });
     }
     let shortCode = '';
-    shortCode = nanoid(10);
+    shortCode = randomBytes(8).toString('base64url').slice(0, 10);
     const response = await prisma.urlShortener.create({
       data: {
         originalUrl,
