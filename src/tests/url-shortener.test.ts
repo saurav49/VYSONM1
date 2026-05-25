@@ -19,6 +19,11 @@ describe('URL Shortener integration test', () => {
 
     expect(urlRedirectResponse.status).toBe(302);
     expect(urlRedirectResponse.headers.location).toBe(originalUrl);
+
+    const deleteResponse = await request(app).delete(
+      `/api/v1/short-codes/${shortCode}`,
+    );
+    expect(deleteResponse.status).toBe(200);
   });
 });
 
@@ -43,6 +48,11 @@ describe('URL Shortener duplicate test', () => {
     expect(shortCode2).toBeDefined();
 
     expect(shortCode1).toBe(shortCode2);
+
+    const deleteResponse1 = await request(app).delete(
+      `/api/v1/short-codes/${shortCode1}`,
+    );
+    expect(deleteResponse1.status).toBe(200);
   });
 });
 
