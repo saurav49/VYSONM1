@@ -8,7 +8,7 @@
     "insert-100M": "tsx src/scripts/insertHundredM.ts",
     "get-original-urls": "tsx src/scripts/getOriginalUrls.ts",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "bunx --bun prisma generate && tsc",
     "start": "node dist/server.js",
     "test": "bun test src/test"
   },
