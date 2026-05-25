@@ -231,14 +231,6 @@ Some findings:
 
 For deployed, it generally slower then the local, due to it taking more time for DNS lookup, TCP handshake
 
-## Optional Data Seed Script (Already created for module 1)
-
-The repository includes a bulk insert script intended for database/performance testing. It inserts up to `100,000,000` generated URL rows, so it is not required to test the two API endpoints and can take substantial time and disk space.
-
-```bash
-bun run insert-100M
-```
-
 ## Production Build
 
 ```bash
