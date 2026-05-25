@@ -118,6 +118,21 @@ routes.get('/redirect', async (req, res) => {
   return res.redirect(originalUrl);
 });
 
+// benchmark endpoint added to test the /shorten POST request
+routes.post('/shorten-benchmark', async (req, res) => {
+  let shortCode = '';
+  shortCode = randomBytes(8).toString('base64url').slice(0, 10);
+  const originalUrl = `https://terminaltrove.com/oha/${Date.now()}-${shortCode}`;
+
+  const response = await prisma.urlShortener.create({
+    data: {
+      originalUrl,
+      shortCode,
+    },
+  });
+
+  return res.status(201).json(response);
+});
 // [Q9] What if we want to delete a short code? Add this functionality using a DELETE method. Which endpoint would suit better? /shorten or /redirect or something else? Write tests too.
 
 routes.delete('/short-codes/:code', async (req, res) => {

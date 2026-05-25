@@ -206,6 +206,21 @@ Some findings:
 
 ### chart: https://docs.google.com/spreadsheets/d/1GM1eyY_tmzvEwq5OaCbHrcVj8p6MmXgw7Cq-HePnpQQ/edit?usp=sharing
 
+## Deployed
+
+## For /redirect endpoint
+
+| Concurrency | Success Rate |   Avg |   p50 |   p90 |   p95 |   p99 |
+| ----------- | -----------: | ----: | ----: | ----: | ----: | ----: |
+| 10          |         100% | 791ms | 785ms | 820ms | 820ms | 820ms |
+| 100         |         100% | 846ms | 842ms | 901ms | 906ms | 934ms |
+| 200         |         100% | 0.87s | 0.87s | 0.96s |    1s |    1s |
+| 500         |         100% | 1.17s |  1.1s |  1.3s |  1.3s |  1.3s |
+| 1000        |         100% | 2.09s |  1.6s |  3.1s |  3.2s |  3.4s |
+| 10,000      |          20% |  3.6s |    4s |  5.2s |  5.3s |  8.2s |
+
+For deployed, it generally slower then the local, due to it taking more time for DNS lookup, TCP handshake
+
 ## Optional Data Seed Script (Already created for module 1)
 
 The repository includes a bulk insert script intended for database/performance testing. It inserts up to `100,000,000` generated URL rows, so it is not required to test the two API endpoints and can take substantial time and disk space.
