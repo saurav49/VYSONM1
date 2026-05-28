@@ -67,28 +67,6 @@ routes.post('/shorten', async (req, res) => {
       },
     });
   } catch (e) {
-    const error = e as {
-      code: string;
-      meta: {
-        modelName: string;
-      };
-    };
-    if (error.code === 'P2002' && error.meta?.modelName === 'UrlShortener') {
-      const reqUrl = await prisma.urlShortener.findUnique({
-        where: {
-          originalUrl: req.body.originalUrl,
-        },
-      });
-      if (reqUrl) {
-        return res.status(200).json({
-          status: true,
-          data: {
-            originalUrl: reqUrl.originalUrl,
-            shortCode: reqUrl.shortCode,
-          },
-        });
-      }
-    }
     return res.status(500).json({
       status: false,
       error: e,
@@ -179,11 +157,23 @@ routes.get('/analytics', async (req, res) => {
       orderBy: [{ clicks: 'desc' }, { lastAccessedAt: 'desc' }],
       take: 10,
     });
+    const tenMostShortenUrl = await prisma.urlShortener.groupBy({
+      by: ['originalUrl'],
+      _count: {
+        originalUrl: true,
+      },
+      orderBy: {
+        _count: {
+          originalUrl: 'desc',
+        },
+      },
+    });
     return res.status(200).json({
       status: true,
       data: {
         tenLatestUrlShortened,
         tenMostPopularUrl,
+        tenMostShortenUrl,
       },
     });
   } catch (e) {

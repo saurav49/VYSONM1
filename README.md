@@ -154,6 +154,15 @@ DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DATABASE' bunx --bun prisma m
 
 Do not use `prisma migrate dev` in QA or production. Use `prisma migrate deploy` for shared environments because it only applies committed migrations and does not create new ones.
 
+Run
+
+```bash
+ bunx --bun prisma generate
+ bunx --bun tsc --noEmit
+```
+
+to update prisma client, to fix any ts related issues
+
 ## Run Tests
 
 Make sure PostgreSQL is running and local migrations have been applied.
