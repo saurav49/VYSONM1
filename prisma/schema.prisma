@@ -10,7 +10,7 @@ datasource db {
 
 model UrlShortener {
   id          Int      @id @default(autoincrement())
-  originalUrl String   @unique
+  originalUrl String   
   shortCode   String   @unique
   clicks      Int      @default(0)
   lastAccessedAt DateTime? @db.Timestamptz(6)
