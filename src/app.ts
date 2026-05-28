@@ -115,6 +115,15 @@ routes.get('/redirect', async (req, res) => {
       message: 'URL not found',
     });
   }
+  await prisma.urlShortener.update({
+    where: {
+      shortCode: code as string,
+    },
+    data: {
+      clicks: typeof result?.clicks === 'number' ? result.clicks + 1 : 0,
+      lastAccessedAt: new Date(),
+    },
+  });
   return res.redirect(originalUrl);
 });
 
@@ -157,6 +166,29 @@ routes.delete('/short-codes/:code', async (req, res) => {
       status: false,
       error: e,
     });
+  }
+});
+
+routes.get('/analytics', async (req, res) => {
+  try {
+    const tenLatestUrlShortened = await prisma.urlShortener.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+    const tenMostPopularUrl = await prisma.urlShortener.findMany({
+      orderBy: [{ clicks: 'desc' }, { lastAccessedAt: 'desc' }],
+      take: 10,
+    });
+    return res.status(200).json({
+      status: true,
+      data: {
+        tenLatestUrlShortened,
+        tenMostPopularUrl,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 });
 

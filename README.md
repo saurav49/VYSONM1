@@ -57,6 +57,7 @@ The API endpoint `/api/v1`.
 
    ```env
    PORT=3000
+   DATABASE_URL='postgresql://postgres:root123@localhost:5432/postgres'
    DB_HOST=localhost
    DB_PORT=5432
    DB_USER=postgres
@@ -64,10 +65,10 @@ The API endpoint `/api/v1`.
    DB_NAME=postgres
    ```
 
-4. Create the database table:
+4. Apply local database migrations:
 
    ```bash
-   bun run create-table
+   bunx --bun prisma migrate dev
    ```
 
 5. Start the development server:
@@ -78,9 +79,84 @@ The API endpoint `/api/v1`.
 
    The server runs at `http://localhost:3000`.
 
+## Database Migrations
+
+This project uses Prisma migrations. The migration files live in `prisma/migrations` and should be committed to git.
+
+### Create a Migration Locally
+
+1. Update the Prisma schema in `prisma/schema.prisma`.
+
+2. Create and apply a migration against your local database:
+
+   ```bash
+   bunx --bun prisma migrate dev --name your_migration_name
+   ```
+
+   Example:
+
+   ```bash
+   bunx --bun prisma migrate dev --name add_last_accessed_at
+   ```
+
+3. Check the migration status:
+
+   ```bash
+   bunx --bun prisma migrate status
+   ```
+
+4. Commit both the schema change and the generated migration folder:
+
+   ```bash
+   git add prisma/schema.prisma prisma/migrations
+   git commit -m "Add database migration"
+   ```
+
+Use `migrate dev` only for local development. It can create new migration files and may prompt for development-only actions.
+
+### Apply Existing Migrations Locally
+
+If the migration files already exist and you only need to bring your local database up to date:
+
+```bash
+bunx --bun prisma migrate dev
+```
+
+### Deploy Migrations to QA
+
+Set `DATABASE_URL` to the QA PostgreSQL connection string, then deploy the committed migrations:
+
+```bash
+DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DATABASE' bunx --bun prisma migrate deploy
+```
+
+Verify QA after deployment:
+
+```bash
+DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DATABASE' bunx --bun prisma migrate status
+```
+
+### Deploy Migrations to Production
+
+Deploy only migration files that have already been tested locally and in QA.
+
+Set `DATABASE_URL` to the production PostgreSQL connection string, then run:
+
+```bash
+DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DATABASE' bunx --bun prisma migrate deploy
+```
+
+Verify production after deployment:
+
+```bash
+DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DATABASE' bunx --bun prisma migrate status
+```
+
+Do not use `prisma migrate dev` in QA or production. Use `prisma migrate deploy` for shared environments because it only applies committed migrations and does not create new ones.
+
 ## Run Tests
 
-Make sure PostgreSQL is running and the database table has been created.
+Make sure PostgreSQL is running and local migrations have been applied.
 
 The integration tests verify:
 
