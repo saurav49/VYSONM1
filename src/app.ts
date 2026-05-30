@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { randomBytes } from 'node:crypto';
+import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
+import { isValidEmail } from './utils/util';
 
 dotenv.config();
 
@@ -34,6 +36,44 @@ routes.get('/ping', (_req, res) => {
     status: true,
     message: 'Server up and running',
   });
+});
+routes.post('/users', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    if (!email || !name) {
+      return res.status(401).json({
+        status: false,
+        message: 'Email and name are required',
+      });
+    }
+    if (!isValidEmail(email)) {
+      return res.status(401).json({
+        status: false,
+        message: 'Invalid email',
+      });
+    }
+    const apiKey = crypto.randomBytes(32).toString('hex');
+    const result = await prisma.user.create({
+      data: {
+        email,
+        name,
+        apiKey,
+      },
+    });
+    return res.status(201).json({
+      status: true,
+      data: {
+        id: result.id,
+        apiKey: result.apiKey,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({
+      status: false,
+      message: e,
+    });
+  }
 });
 routes.post('/shorten', async (req, res) => {
   try {

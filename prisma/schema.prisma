@@ -10,12 +10,15 @@ datasource db {
 
 model UrlShortener {
   id          Int      @id @default(autoincrement())
+  user        User?     @relation(fields: [userId], references: [id])
+  userId      Int?
   originalUrl String   
   shortCode   String   @unique
   clicks      Int      @default(0)
   lastAccessedAt DateTime? @db.Timestamptz(6)
   
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  deletedAt   DateTime? @db.Timestamptz(6)
 }
 
 model User {
@@ -23,6 +26,7 @@ model User {
   email   String @unique
   name    String?
   apiKey  String @unique
+  shortens UrlShortener[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
 }
