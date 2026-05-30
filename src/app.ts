@@ -91,12 +91,25 @@ routes.post('/shorten', async (req, res) => {
         message: 'Invalid url',
       });
     }
+    const xApiKey = req.headers['x-api-key'];
+    const user = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
     let shortCode = '';
     shortCode = randomBytes(8).toString('base64url').slice(0, 10);
     const response = await prisma.urlShortener.create({
       data: {
         originalUrl,
         shortCode,
+        userId: user.id,
       },
     });
     return res.status(201).json({
@@ -169,6 +182,29 @@ routes.delete('/short-codes/:code', async (req, res) => {
       return res.status(400).json({
         status: false,
         message: 'Code is required',
+      });
+    }
+    const xApiKey = req.headers['x-api-key'];
+    const user = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
+    const urlShortener = await prisma.urlShortener.findUnique({
+      where: {
+        shortCode: code as string,
+      },
+    });
+    if (urlShortener && urlShortener.userId !== user.id) {
+      return res.status(403).json({
+        status: false,
+        message: 'Forbidden action',
       });
     }
     await prisma.urlShortener.delete({
