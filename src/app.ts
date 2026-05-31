@@ -143,6 +143,7 @@ routes.get('/redirect', async (req, res) => {
   const result = await prisma.urlShortener.findUnique({
     where: {
       shortCode: code as string,
+      deletedAt: null,
     },
   });
   const originalUrl = result ? result?.originalUrl : undefined;
@@ -166,9 +167,12 @@ routes.get('/redirect', async (req, res) => {
 routes.delete('/users', async (req, res) => {
   try {
     const xApiKey = req.headers['x-api-key'];
-    await prisma.user.delete({
+    await prisma.user.update({
       where: {
         apiKey: xApiKey as string,
+      },
+      data: {
+        deletedAt: new Date(),
       },
     });
     return res.status(200).json({
@@ -231,9 +235,12 @@ routes.delete('/short-codes/:code', async (req, res) => {
         message: 'Forbidden action',
       });
     }
-    await prisma.urlShortener.delete({
+    await prisma.urlShortener.update({
       where: {
         shortCode: code as string,
+      },
+      data: {
+        deletedAt: new Date(),
       },
     });
     return res.status(200).json({
