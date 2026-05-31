@@ -16,6 +16,7 @@ model UrlShortener {
   shortCode   String   @unique
   clicks      Int      @default(0)
   lastAccessedAt DateTime? @db.Timestamptz(6)
+  expiryDate DateTime? @db.Timestamptz(6)
   
   createdAt   DateTime  @default(now()) @db.Timestamptz(6)
   deletedAt   DateTime? @db.Timestamptz(6)
@@ -29,4 +30,5 @@ model User {
   shortens UrlShortener[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
+  deletedAt   DateTime? @db.Timestamptz(6)
 }
