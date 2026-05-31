@@ -1,6 +1,6 @@
-import { Request } from 'express';
 import { randomBytes } from 'node:crypto';
 import { prisma } from '../lib/prisma';
+import { Request, Response, NextFunction } from 'express';
 
 const isValidEmail = (email: string) => {
   const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -130,4 +130,20 @@ const handleCreateUrlShortener = async ({
     };
   }
 };
-export { isValidEmail, isValidDateTime, handleCreateUrlShortener };
+function errorHandler(
+  err: any,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+) {
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+
+  res.status(status).json({ error: message });
+}
+export {
+  isValidEmail,
+  isValidDateTime,
+  handleCreateUrlShortener,
+  errorHandler,
+};

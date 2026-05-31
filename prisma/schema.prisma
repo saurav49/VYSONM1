@@ -8,6 +8,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Tier {
+  HOBBY
+  ENTERPRISE
+}
+
 model UrlShortener {
   id          Int      @id @default(autoincrement())
   user        User?     @relation(fields: [userId], references: [id])
@@ -28,6 +33,7 @@ model User {
   name    String?
   apiKey  String @unique
   shortens UrlShortener[]
+  tier     Tier  @default(HOBBY)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   deletedAt   DateTime? @db.Timestamptz(6)
