@@ -121,3 +121,23 @@ describe('URL Shortener code not passed', () => {
     expect(res.status).toBe(400);
   });
 });
+
+// missing/invalid x-api-key
+describe('Url Shortener x-api-key validation', () => {
+  it('should return 401 for invalid x-api-key', async () => {
+    const res = await request(app)
+      .post('/api/v1/shorten')
+      .set('x-api-key', 'invalid api key')
+      .send({
+        originalUrl: 'https://google.com',
+      });
+
+    expect(res.statusCode).toBe(401);
+  });
+  it('should return 401 for missing x-api-key', async () => {
+    const res = await request(app).post('/api/v1/shorten').send({
+      originalUrl: 'https://google.com',
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});

@@ -92,13 +92,19 @@ routes.post('/shorten', async (req, res) => {
       });
     }
     const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'API key is required',
+      });
+    }
     const user = await prisma.user.findUnique({
       where: {
         apiKey: xApiKey as string,
       },
     });
     if (!user) {
-      return res.status(404).json({
+      return res.status(401).json({
         status: false,
         message: 'User not found',
       });
@@ -156,6 +162,24 @@ routes.get('/redirect', async (req, res) => {
     },
   });
   return res.redirect(originalUrl);
+});
+routes.delete('/users', async (req, res) => {
+  try {
+    const xApiKey = req.headers['x-api-key'];
+    await prisma.user.delete({
+      where: {
+        apiKey: xApiKey as string,
+      },
+    });
+    return res.status(200).json({
+      status: true,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
 });
 
 // benchmark endpoint added to test the /shorten POST request
