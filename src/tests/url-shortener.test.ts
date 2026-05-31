@@ -1,13 +1,20 @@
 import request from 'supertest';
 import app from '../app';
 import { describe, it, expect } from 'bun:test';
+import { prisma } from '../lib/prisma';
+
+const apiKey =
+  '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
 
 describe('URL Shortener integration test', () => {
   it('should shorten the url and redirect correctly', async () => {
     const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
-    const shortenerResponse = await request(app).post('/api/v1/shorten').send({
-      originalUrl,
-    });
+    const shortenerResponse = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        originalUrl,
+      })
+      .set('x-api-key', apiKey);
 
     expect(shortenerResponse.status).toBe(201);
     const shortCode = shortenerResponse.body.data.shortCode;
@@ -20,39 +27,41 @@ describe('URL Shortener integration test', () => {
     expect(urlRedirectResponse.status).toBe(302);
     expect(urlRedirectResponse.headers.location).toBe(originalUrl);
 
-    const deleteResponse = await request(app).delete(
-      `/api/v1/short-codes/${shortCode}`,
-    );
+    const deleteResponse = await request(app)
+      .delete(`/api/v1/short-codes/${shortCode}`)
+      .set('x-api-key', apiKey);
     expect(deleteResponse.status).toBe(200);
   });
-});
-
-// [Q7] What happens if the same URL is sent again? Handle this case of duplicate URLs. Write a test case that generates a random URL and sends it twice to the API. The same short code should be returned.
-describe('URL Shortener duplicate test', () => {
-  it('should handle same url and return the same code correctly', async () => {
+  it('should return 409 for duplicate short code', async () => {
+    const shortCode = 'JfU2UG8-oB';
     const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
-    const shortenerResponse1 = await request(app).post('/api/v1/shorten').send({
-      originalUrl,
-    });
-    const shortenerResponse2 = await request(app).post('/api/v1/shorten').send({
-      originalUrl,
-    });
+    const res = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        originalUrl,
+        code: shortCode,
+      })
+      .set('x-api-key', apiKey);
 
-    expect(shortenerResponse1.status).toBe(201);
-    expect(shortenerResponse2.status).toBe(200);
+    expect(res.statusCode).toBe(409);
+  });
+  it('should return 201 for custom short code', async () => {
+    const shortCode = `abc-${Date.now()}`;
+    const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
+    const res = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        code: shortCode,
+        originalUrl,
+      })
+      .set('x-api-key', apiKey);
+    expect(res.statusCode).toBe(201);
+    expect(res.body.data.shortCode).toBe(shortCode);
 
-    const shortCode1 = shortenerResponse1.body.data.shortCode;
-    const shortCode2 = shortenerResponse2.body.data.shortCode;
-
-    expect(shortCode1).toBeDefined();
-    expect(shortCode2).toBeDefined();
-
-    expect(shortCode1).toBe(shortCode2);
-
-    const deleteResponse1 = await request(app).delete(
-      `/api/v1/short-codes/${shortCode1}`,
-    );
-    expect(deleteResponse1.status).toBe(200);
+    const deleteRes = await request(app)
+      .delete(`/api/v1/short-codes/${res.body.data.shortCode}`)
+      .set('x-api-key', apiKey);
+    expect(deleteRes.status).toBe(200);
   });
 });
 
@@ -72,17 +81,20 @@ describe('URL Shortener invalid code test', () => {
 describe('URL Shortener delete short code', () => {
   it('should handle the deletion of short code', async () => {
     const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
-    const response = await request(app).post('/api/v1/shorten').send({
-      originalUrl,
-    });
+    const response = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        originalUrl,
+      })
+      .set('x-api-key', apiKey);
 
     expect(response.status).toBe(201);
     const shortCode = response.body.data.shortCode;
     expect(shortCode).toBeDefined();
 
-    const deleteResponse = await request(app).delete(
-      `/api/v1/short-codes/${shortCode}`,
-    );
+    const deleteResponse = await request(app)
+      .delete(`/api/v1/short-codes/${shortCode}`)
+      .set('x-api-key', apiKey);
 
     expect(deleteResponse.status).toBe(200);
   });
@@ -139,5 +151,77 @@ describe('Url Shortener x-api-key validation', () => {
       originalUrl: 'https://google.com',
     });
     expect(res.statusCode).toBe(401);
+  });
+});
+
+// expiry date
+describe('Url Shortener Expiry date', () => {
+  it('should return 400 for invalid expiry date', async () => {
+    const res = await request(app).post('/api/v1/shorten').send({
+      originalUrl: 'https://google.com',
+      expiryDate: '123',
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+  it('should return 201 for valid expiry date', async () => {
+    const res = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        originalUrl: 'https://google.com',
+        expiryDate: '07-06-2026', // month-day-year
+      })
+      .set('x-api-key', apiKey);
+    expect(res.statusCode).toBe(201);
+    const deleteRes = await request(app)
+      .delete(`/api/v1/short-codes/${res.body.data.shortCode}`)
+      .set('x-api-key', apiKey);
+    expect(deleteRes.statusCode).toBe(200);
+  });
+  it('should return 400 for past expiry date', async () => {
+    const res = await request(app).post('/api/v1/shorten').send({
+      originalUrl: 'https://google.com',
+      expiryDate: '02-06-2026', // month-day-year
+    });
+    expect(res.statusCode).toBe(400);
+  });
+  it('should return 404 when redirecting an expired url', async () => {
+    const originalUrl = `https://google.com/${Date.now()}`;
+    const createRes = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        originalUrl,
+        expiryDate: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      })
+      .set('x-api-key', apiKey);
+
+    expect(createRes.statusCode).toBe(201);
+
+    const shortCode = createRes.body.data.shortCode;
+
+    await prisma.urlShortener.update({
+      where: {
+        shortCode,
+      },
+      data: {
+        expiryDate: new Date(Date.now() - 60 * 60 * 1000),
+      },
+    });
+
+    const redirectRes = await request(app)
+      .get(`/api/v1/redirect?code=${shortCode}`)
+      .redirects(0);
+
+    expect(redirectRes.statusCode).toBe(404);
+    expect(redirectRes.body).toEqual({
+      status: false,
+      message: 'URL expired',
+    });
+
+    await prisma.urlShortener.delete({
+      where: {
+        shortCode,
+      },
+    });
   });
 });

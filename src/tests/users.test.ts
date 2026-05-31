@@ -5,7 +5,7 @@ import app from '../app';
 // user create
 describe('Users creation test', () => {
   it('should create user and return 201 status code', async () => {
-    const email = 'billy@gmail.com';
+    const email = `billy-${Date.now()}@gmail.com`;
     const name = 'Billy';
     const response = await request(app).post('/api/v1/users').send({
       email,

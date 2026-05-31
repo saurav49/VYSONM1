@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
-import { isValidEmail } from './utils/util';
+import { isValidDateTime, isValidEmail } from './utils/util';
 
 dotenv.config();
 
@@ -75,13 +75,28 @@ routes.post('/users', async (req, res) => {
     });
   }
 });
+// [Q9] In the /shorten API endpoint, allow an optional parameter to set the custom code as requested by the user (e.g., user wants https://short.ly/awesome-article). Add tests as well.
 routes.post('/shorten', async (req, res) => {
   try {
-    const { originalUrl } = req.body;
+    const now = new Date().getTime();
+    const { originalUrl, expiryDate, code } = req.body;
+    const parsedExpiryDate = expiryDate ? new Date(expiryDate) : null;
     if (!originalUrl) {
       return res.status(400).json({
         status: false,
         message: 'Original url is required',
+      });
+    }
+    if (expiryDate && !isValidDateTime(expiryDate)) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid Expiry date',
+      });
+    }
+    if (parsedExpiryDate && now > parsedExpiryDate.getTime()) {
+      return res.status(400).json({
+        status: false,
+        message: 'Past expiry date is invalid',
       });
     }
     const isValidUrl = URL.canParse(originalUrl);
@@ -109,13 +124,26 @@ routes.post('/shorten', async (req, res) => {
         message: 'User not found',
       });
     }
-    let shortCode = '';
-    shortCode = randomBytes(8).toString('base64url').slice(0, 10);
+    if (code) {
+      const response = await prisma.urlShortener.findUnique({
+        where: {
+          shortCode: code,
+        },
+      });
+      if (response && response.id) {
+        return res.status(409).json({
+          status: false,
+          message: 'Short code already present, please try another one',
+        });
+      }
+    }
+    const shortCode = code ?? randomBytes(8).toString('base64url').slice(0, 10);
     const response = await prisma.urlShortener.create({
       data: {
         originalUrl,
         shortCode,
         userId: user.id,
+        expiryDate: parsedExpiryDate,
       },
     });
     return res.status(201).json({
@@ -133,6 +161,7 @@ routes.post('/shorten', async (req, res) => {
   }
 });
 routes.get('/redirect', async (req, res) => {
+  const now = new Date().getTime();
   const { code } = req.query;
   if (!code) {
     return res.status(400).json({
@@ -146,11 +175,24 @@ routes.get('/redirect', async (req, res) => {
       deletedAt: null,
     },
   });
-  const originalUrl = result ? result?.originalUrl : undefined;
+  if (!result) {
+    return res.status(404).json({
+      status: false,
+      message: 'URL not found',
+    });
+  }
+  const originalUrl = result?.originalUrl;
   if (!originalUrl) {
     return res.status(404).json({
       status: false,
       message: 'URL not found',
+    });
+  }
+  const expiryDate = result.expiryDate;
+  if (expiryDate && new Date(expiryDate).getTime() < now) {
+    return res.status(404).json({
+      status: false,
+      message: 'URL expired',
     });
   }
   await prisma.urlShortener.update({
