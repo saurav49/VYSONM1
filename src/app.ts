@@ -71,6 +71,49 @@ routes.post('/users', async (req, res) => {
     });
   }
 });
+routes.get('/users/short-list', async (req, res) => {
+  try {
+    const xApiKey = req.headers['x-api-key'];
+    const userWithUrls = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+      include: {
+        shortens: true,
+      },
+    });
+    return res.status(200).json({
+      status: true,
+      data: userWithUrls,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+routes.delete('/users', async (req, res) => {
+  try {
+    const xApiKey = req.headers['x-api-key'];
+    await prisma.user.update({
+      where: {
+        apiKey: xApiKey as string,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+    return res.status(200).json({
+      status: true,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
 routes.post('/shorten', async (req, res) => {
   try {
     const { originalUrl, expiryDate, code, password } = req.body;
@@ -245,27 +288,6 @@ routes.get('/redirect', async (req, res) => {
     },
   });
   return res.redirect(originalUrl);
-});
-routes.delete('/users', async (req, res) => {
-  try {
-    const xApiKey = req.headers['x-api-key'];
-    await prisma.user.update({
-      where: {
-        apiKey: xApiKey as string,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-    return res.status(200).json({
-      status: true,
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
 });
 
 // benchmark endpoint added to test the /shorten POST request
