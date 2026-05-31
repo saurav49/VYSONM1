@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
-import { isValidDateTime, isValidEmail } from './utils/util';
+import { handleCreateUrlShortener, isValidEmail } from './utils/util';
 
 dotenv.config();
 
@@ -75,83 +75,61 @@ routes.post('/users', async (req, res) => {
     });
   }
 });
-// [Q9] In the /shorten API endpoint, allow an optional parameter to set the custom code as requested by the user (e.g., user wants https://short.ly/awesome-article). Add tests as well.
 routes.post('/shorten', async (req, res) => {
   try {
-    const now = new Date().getTime();
     const { originalUrl, expiryDate, code } = req.body;
-    const parsedExpiryDate = expiryDate ? new Date(expiryDate) : null;
-    if (!originalUrl) {
-      return res.status(400).json({
-        status: false,
-        message: 'Original url is required',
-      });
-    }
-    if (expiryDate && !isValidDateTime(expiryDate)) {
-      return res.status(400).json({
-        status: false,
-        message: 'Invalid Expiry date',
-      });
-    }
-    if (parsedExpiryDate && now > parsedExpiryDate.getTime()) {
-      return res.status(400).json({
-        status: false,
-        message: 'Past expiry date is invalid',
-      });
-    }
-    const isValidUrl = URL.canParse(originalUrl);
-    if (!isValidUrl) {
-      return res.status(400).json({
-        status: false,
-        message: 'Invalid url',
-      });
-    }
-    const xApiKey = req.headers['x-api-key'];
-    if (!xApiKey) {
-      return res.status(401).json({
-        status: false,
-        message: 'API key is required',
-      });
-    }
-    const user = await prisma.user.findUnique({
-      where: {
-        apiKey: xApiKey as string,
-      },
+    const result = await handleCreateUrlShortener({
+      req,
+      originalUrl,
+      expiryDate,
+      code,
     });
-    if (!user) {
-      return res.status(401).json({
-        status: false,
-        message: 'User not found',
-      });
-    }
-    if (code) {
-      const response = await prisma.urlShortener.findUnique({
-        where: {
-          shortCode: code,
-        },
-      });
-      if (response && response.id) {
-        return res.status(409).json({
-          status: false,
-          message: 'Short code already present, please try another one',
-        });
-      }
-    }
-    const shortCode = code ?? randomBytes(8).toString('base64url').slice(0, 10);
-    const response = await prisma.urlShortener.create({
-      data: {
-        originalUrl,
-        shortCode,
-        userId: user.id,
-        expiryDate: parsedExpiryDate,
-      },
+    return res.status(result.statusCode).json(result.body);
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
     });
-    return res.status(201).json({
-      status: true,
-      data: {
-        originalUrl: response.originalUrl,
-        shortCode: response.shortCode,
-      },
+  }
+});
+routes.post('/shorten/batch', async (req, res) => {
+  try {
+    const reqs = req.body;
+    if (Array.isArray(reqs) && reqs.length > 0) {
+      const r = await Promise.allSettled(
+        reqs.map((r) =>
+          handleCreateUrlShortener({
+            req,
+            originalUrl: r.originalUrl,
+            expiryDate: r?.expiryDate,
+            code: r?.code,
+          }),
+        ),
+      );
+      const results = r.map((result) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        }
+        return {
+          statusCode: 500,
+          body: {
+            status: false,
+            message: result.reason,
+          },
+        };
+      });
+      const statusCode = results.every((result) => result.statusCode === 201)
+        ? 201
+        : 207;
+
+      return res.status(statusCode).json({
+        status: statusCode === 201,
+        data: results,
+      });
+    }
+    return res.status(400).json({
+      status: false,
+      message: 'No batch data found',
     });
   } catch (e) {
     return res.status(500).json({
