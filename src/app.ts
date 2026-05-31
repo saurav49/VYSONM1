@@ -9,6 +9,7 @@ import {
   handleCreateUrlShortener,
   isValidEmail,
 } from './utils/util';
+import { Tier } from './utils/enums';
 
 dotenv.config();
 
@@ -88,6 +89,24 @@ routes.post('/shorten', async (req, res) => {
 routes.post('/shorten/batch', async (req, res) => {
   try {
     const reqs = req.body;
+    const xApiKey = req.headers['x-api-key'];
+    const user = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+    });
+    if (!user) {
+      return res.status(401).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
+    if (user.tier !== Tier.ENTERPRISE) {
+      return res.status(401).json({
+        status: false,
+        message: 'Please upgrade to enterprise plan to batch insert',
+      });
+    }
     if (Array.isArray(reqs) && reqs.length > 0) {
       const r = await Promise.allSettled(
         reqs.map((r) =>
