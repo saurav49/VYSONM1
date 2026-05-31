@@ -7,9 +7,11 @@ import { prisma } from './lib/prisma';
 import {
   errorHandler,
   handleCreateUrlShortener,
+  hashPassword,
   isValidEmail,
 } from './utils/util';
 import { Tier } from './utils/enums';
+const bcrypt = require('bcrypt');
 
 dotenv.config();
 
@@ -71,14 +73,53 @@ routes.post('/users', async (req, res) => {
 });
 routes.post('/shorten', async (req, res) => {
   try {
-    const { originalUrl, expiryDate, code } = req.body;
+    const { originalUrl, expiryDate, code, password } = req.body;
+    let hashedPassword = undefined;
+    if (password) {
+      hashedPassword = await hashPassword(password);
+    }
     const result = await handleCreateUrlShortener({
       req,
       originalUrl,
       expiryDate,
       code,
+      hashedPassword,
     });
     return res.status(result.statusCode).json(result.body);
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+routes.patch('/shorten', async (req, res) => {
+  try {
+    const { code, expiryDate, password } = req.body;
+    if (expiryDate) {
+      return res.status(401).json({
+        status: false,
+        message: 'Expiry date missing',
+      });
+    }
+    const parsedExpiryDate = new Date(expiryDate);
+    let hashedPassword = undefined;
+    if (password) {
+      hashedPassword = await hashPassword(password);
+    }
+    const result = await prisma.urlShortener.update({
+      where: {
+        shortCode: code,
+      },
+      data: {
+        expiryDate: parsedExpiryDate,
+        password: hashedPassword,
+      },
+    });
+    return res.status(200).json({
+      status: true,
+      data: result,
+    });
   } catch (e) {
     return res.status(500).json({
       status: false,
@@ -150,38 +191,9 @@ routes.post('/shorten/batch', async (req, res) => {
     });
   }
 });
-routes.patch('/shorten', async (req, res) => {
-  try {
-    const { code, expiryDate } = req.body;
-    if (expiryDate) {
-      return res.status(401).json({
-        status: false,
-        message: 'Expiry date missing',
-      });
-    }
-    const parsedExpiryDate = new Date(expiryDate);
-    const result = await prisma.urlShortener.update({
-      where: {
-        shortCode: code,
-      },
-      data: {
-        expiryDate: parsedExpiryDate,
-      },
-    });
-    return res.status(200).json({
-      status: true,
-      data: result,
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
 routes.get('/redirect', async (req, res) => {
   const now = new Date().getTime();
-  const { code } = req.query;
+  const { code, password } = req.query;
   if (!code) {
     return res.status(400).json({
       status: false,
@@ -206,6 +218,15 @@ routes.get('/redirect', async (req, res) => {
       status: false,
       message: 'URL not found',
     });
+  }
+  if (password && result?.password) {
+    const isMatch = await bcrypt.compare(password, result.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        status: false,
+        message: 'Unauthorized access',
+      });
+    }
   }
   const expiryDate = result.expiryDate;
   if (expiryDate && new Date(expiryDate).getTime() < now) {
@@ -262,8 +283,6 @@ routes.post('/shorten-benchmark', async (req, res) => {
 
   return res.status(201).json(response);
 });
-// [Q9] What if we want to delete a short code? Add this functionality using a DELETE method. Which endpoint would suit better? /shorten or /redirect or something else? Write tests too.
-
 routes.delete('/short-codes/:code', async (req, res) => {
   try {
     const { code } = req.params;

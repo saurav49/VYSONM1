@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { prisma } from '../lib/prisma';
 import { Request, Response, NextFunction } from 'express';
+const bcrypt = require('bcrypt');
 
 const isValidEmail = (email: string) => {
   const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -15,11 +16,13 @@ const handleCreateUrlShortener = async ({
   expiryDate,
   code,
   req,
+  hashedPassword,
 }: {
   originalUrl: string;
   expiryDate?: string;
   code?: string;
   req: Request;
+  hashedPassword?: string;
 }) => {
   try {
     const now = new Date().getTime();
@@ -108,6 +111,7 @@ const handleCreateUrlShortener = async ({
         shortCode,
         userId: user.id,
         expiryDate: parsedExpiryDate,
+        password: hashedPassword,
       },
     });
     return {
@@ -141,9 +145,14 @@ function errorHandler(
 
   res.status(status).json({ error: message });
 }
+async function hashPassword(password: string) {
+  const saltRounds = 10;
+  return await bcrypt.hash(password, saltRounds);
+}
 export {
   isValidEmail,
   isValidDateTime,
   handleCreateUrlShortener,
   errorHandler,
+  hashPassword,
 };

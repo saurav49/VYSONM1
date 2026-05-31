@@ -19,6 +19,7 @@ model UrlShortener {
   userId      Int?
   originalUrl String   
   shortCode   String   @unique
+  password    String?
   clicks      Int      @default(0)
   lastAccessedAt DateTime? @db.Timestamptz(6)
   expiryDate DateTime? @db.Timestamptz(6)
