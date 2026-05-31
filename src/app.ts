@@ -150,6 +150,35 @@ routes.post('/shorten/batch', async (req, res) => {
     });
   }
 });
+routes.patch('/shorten', async (req, res) => {
+  try {
+    const { code, expiryDate } = req.body;
+    if (expiryDate) {
+      return res.status(401).json({
+        status: false,
+        message: 'Expiry date missing',
+      });
+    }
+    const parsedExpiryDate = new Date(expiryDate);
+    const result = await prisma.urlShortener.update({
+      where: {
+        shortCode: code,
+      },
+      data: {
+        expiryDate: parsedExpiryDate,
+      },
+    });
+    return res.status(200).json({
+      status: true,
+      data: result,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
 routes.get('/redirect', async (req, res) => {
   const now = new Date().getTime();
   const { code } = req.query;
