@@ -33,6 +33,21 @@ routes.get('/ping', (_req, res) => {
     message: 'Server up and running',
   });
 });
+routes.get('/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.status(200).json({
+      status: true,
+      database: 'CONNECTED',
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(503).json({
+      status: false,
+      database: 'DOWN',
+    });
+  }
+});
 routes.post('/users', async (req, res) => {
   try {
     const { email, name } = req.body;
