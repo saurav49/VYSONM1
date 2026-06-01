@@ -16,6 +16,7 @@ import {
   errorHandler,
   loggerHandler,
   tierHandler,
+  timeMiddlewareHandler,
 } from './utils/middlewares';
 const bcrypt = require('bcrypt');
 

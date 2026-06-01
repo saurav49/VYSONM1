@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { prisma } from '../lib/prisma';
 import { Tier } from './enums';
 import path from 'path';
@@ -95,7 +95,7 @@ async function blacklistHandler(
   }
 }
 async function apiRequestTimeHandler(
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction,
 ) {
@@ -111,6 +111,28 @@ async function apiRequestTimeHandler(
   };
   next();
 }
+function timeMiddlewareHandler(name: string, middleware: any): RequestHandler {
+  return async (req, res, next) => {
+    const startTime = new Date();
+
+    function done(e?: any) {
+      const endTime = new Date();
+      const timeElapsed = endTime.getTime() - startTime.getTime();
+      console.log(`${name} took ${timeElapsed}ms`);
+      next(e);
+    }
+
+    try {
+      middleware(req, res, done);
+    } catch (e) {
+      console.error(e);
+      const endTime = new Date();
+      const timeElapsed = endTime.getTime() - startTime.getTime();
+      console.log(`${name} took ${timeElapsed}ms`);
+      next(e);
+    }
+  };
+}
 export {
   errorHandler,
   loggerHandler,
@@ -118,4 +140,5 @@ export {
   tierHandler,
   blacklistHandler,
   apiRequestTimeHandler,
+  timeMiddlewareHandler,
 };
