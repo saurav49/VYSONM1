@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { Tier } from './enums';
 import path from 'path';
-import { readFile, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 function errorHandler(
   err: any,
   _req: Request,
@@ -71,19 +71,28 @@ async function blacklistHandler(
   res: Response,
   next: NextFunction,
 ) {
-  const filePath = path.join(process.cwd(), 'src', 'config', 'blacklist.txt');
-  readFile(filePath, 'utf8', (_err, data) => {
-    const clientIP = req?.ip;
-    const blacklistIps = data.split('\n');
-    const isBlacklistIPFound = blacklistIps.some((r) => r === clientIP);
-    if (isBlacklistIPFound) {
+  const clientXAPIKey = req.headers['x-api-key'];
+  if (!clientXAPIKey) {
+    return next();
+  }
+  try {
+    const filePath = path.join(process.cwd(), 'src', 'config', 'blacklist.txt');
+    const data = readFileSync(filePath, 'utf8');
+    const blacklistAPIKey = data.split('\n');
+    const isBlacklistAPIKeyFound = blacklistAPIKey.find(
+      (r) => r.trim() === clientXAPIKey,
+    );
+    if (isBlacklistAPIKeyFound) {
       return res.status(403).json({
         status: false,
         message: 'Unauthorized access',
       });
     }
-  });
-  next();
+    next();
+  } catch (e) {
+    console.error(e);
+    next();
+  }
 }
 export {
   errorHandler,
