@@ -8,9 +8,17 @@ The API endpoint `/api/v1`.
 
 | Method | Endpoint                       | Description                                                 |
 | ------ | ------------------------------ | ----------------------------------------------------------- |
-| `POST` | `/api/v1/shorten`              | Accepts an original URL and returns a generated short code. |
+| `POST` | `/api/v1/users`                | Creates a user and returns an API key.                      |
+| `DELETE` | `/api/v1/users`              | Soft-deletes the user for the provided API key.             |
+| `GET`  | `/api/v1/users/short-list`     | Lists the authenticated user's shortened URLs.              |
+| `POST` | `/api/v1/shorten`              | Creates a short code for the authenticated user.            |
+| `PATCH` | `/api/v1/shorten`             | Edits expiry date/password for a user's short code.         |
+| `POST` | `/api/v1/shorten/batch`        | Bulk creates short codes for enterprise users.              |
 | `GET`  | `/api/v1/redirect?code={code}` | Redirects to the original URL for a short code.             |
+| `DELETE` | `/api/v1/short-codes/{code}` | Soft-deletes a short code owned by the authenticated user.  |
+| `GET`  | `/api/v1/analytics`            | Returns basic URL analytics collections.                    |
 | `GET`  | `/api/v1/ping`                 | Checks whether the server is running.                       |
+| `GET`  | `/api/v1/health`               | Checks server and database connectivity.                    |
 
 ## Tech Stack
 
@@ -170,15 +178,22 @@ Make sure PostgreSQL is running and local migrations have been applied.
 The integration tests verify:
 
 - A created short URL redirects to its original URL
-- A duplicate URL returns the same short code
+- Multiple short codes can point to the same original URL
+- A custom short code returns `409` when it already exists
 - An unknown short code returns `404`
-- A short code can be deleted
+- A short code can only be deleted by its owner
 - A missing original URL returns `400`
 - An invalid original URL returns `400`
 - A missing redirect code returns `400`
+- Expired URLs return `404`
+- Hobby users cannot use batch creation, enterprise users can
+- Batch creation returns per-item results
+- Password-protected URLs require the correct password
+- Users can list only their own shortened URLs
+- Analytics endpoint returns latest, popular, and most-shortened URL collections
 
 ```bash
-bun test src/tests/url-shortener.test.ts
+bun run test
 ```
 
 ## API Usage
@@ -188,6 +203,7 @@ bun test src/tests/url-shortener.test.ts
 ```bash
 curl -X POST http://localhost:3000/api/v1/shorten \
   -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
   -d '{"originalUrl":"https://example.com/some/long/path"}'
 ```
 
@@ -203,13 +219,75 @@ Example response:
 }
 ```
 
+Optional request fields:
+
+- `code`: custom short code. Returns `409` if already taken.
+- `expiryDate`: expiry timestamp. Expired URLs return `404`.
+- `password`: protects the short code. Redirect requires the same password.
+
 ### Redirect Using a Short Code
 
 ```bash
 curl -i "http://localhost:3000/api/v1/redirect?code=generatedCode"
 ```
 
-When the short code exists, the endpoint responds with an HTTP redirect to the stored original URL. Otherwise, the API returns a `404 Not Found` response.
+For password-protected URLs:
+
+```bash
+curl -i "http://localhost:3000/api/v1/redirect?code=generatedCode&password=secret"
+```
+
+When the short code exists and is active, the endpoint responds with an HTTP redirect to the stored original URL. Missing/expired/deleted URLs return `404`; protected URLs without the correct password return `401`.
+
+### Batch Shorten
+
+Batch creation is only available for users in the `ENTERPRISE` tier.
+
+```bash
+curl -X POST http://localhost:3000/api/v1/shorten/batch \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ENTERPRISE_API_KEY" \
+  -d '[{"originalUrl":"https://example.com/a","code":"example-a"},{"originalUrl":"https://example.com/b"}]'
+```
+
+The endpoint returns `201` when every item succeeds and `207` when the batch has mixed per-item results.
+
+### Edit a Short Code
+
+```bash
+curl -X PATCH http://localhost:3000/api/v1/shorten \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"code":"generatedCode","expiryDate":"2026-07-06T00:00:00.000Z","password":"new-secret"}'
+```
+
+Only the owner can edit a short code.
+
+### Delete a Short Code
+
+```bash
+curl -X DELETE http://localhost:3000/api/v1/short-codes/generatedCode \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+Deletion is a soft delete. Deleted short codes no longer redirect.
+
+### User URL List
+
+```bash
+curl -H "x-api-key: YOUR_API_KEY" \
+  http://localhost:3000/api/v1/users/short-list
+```
+
+Returns the authenticated user's URL data without exposing API keys or password hashes.
+
+### Analytics
+
+```bash
+curl http://localhost:3000/api/v1/analytics
+```
+
+Returns the last 10 shortened URLs, the 10 most popular URLs by clicks, and the top 10 original URLs by shorten count.
 
 # Load Testing
 
