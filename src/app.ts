@@ -413,14 +413,17 @@ routes.delete('/short-codes/:code', async (req, res) => {
 routes.get('/analytics', async (req, res) => {
   try {
     const tenLatestUrlShortened = await prisma.urlShortener.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
     const tenMostPopularUrl = await prisma.urlShortener.findMany({
+      where: { deletedAt: null },
       orderBy: [{ clicks: 'desc' }, { lastAccessedAt: 'desc' }],
       take: 10,
     });
     const tenMostShortenUrl = await prisma.urlShortener.groupBy({
+      where: { deletedAt: null },
       by: ['originalUrl'],
       _count: {
         originalUrl: true,
