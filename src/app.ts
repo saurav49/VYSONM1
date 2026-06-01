@@ -99,7 +99,20 @@ routes.get('/users/short-list', async (req, res) => {
     });
     return res.status(200).json({
       status: true,
-      data: userWithUrls,
+      data: {
+        id: userWithUrls?.id,
+        email: userWithUrls?.email,
+        name: userWithUrls?.name,
+        tier: userWithUrls?.tier,
+        shortens: userWithUrls?.shortens.map((r) => ({
+          id: r?.id,
+          originalUrl: r?.originalUrl,
+          shortCode: r?.shortCode,
+          clicks: r?.clicks,
+          lastAccessedAt: r?.lastAccessedAt,
+          expiryDate: r?.expiryDate,
+        })),
+      },
     });
   } catch (e) {
     return res.status(500).json({
