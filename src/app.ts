@@ -205,6 +205,7 @@ routes.post('/shorten/batch', async (req, res) => {
     const user = await prisma.user.findUnique({
       where: {
         apiKey: xApiKey as string,
+        deletedAt: null,
       },
     });
     if (!user) {
@@ -290,7 +291,13 @@ routes.get('/redirect', async (req, res) => {
       message: 'URL not found',
     });
   }
-  if (password && result?.password) {
+  if (result?.password && !password) {
+    return res.status(401).json({
+      status: false,
+      message: 'Unauthorized access',
+    });
+  }
+  if (result?.password && password) {
     const isMatch = await bcrypt.compare(password, result.password);
     if (!isMatch) {
       return res.status(401).json({
