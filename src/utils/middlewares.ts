@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
+import { Tier } from './enums';
 function errorHandler(
   err: any,
   _req: Request,
@@ -47,5 +48,15 @@ async function authHandler(req: Request, res: Response, next: NextFunction) {
   (req as any).user = user;
   next();
 }
-
-export { errorHandler, loggerHandler, authHandler };
+async function tierHandler(req: Request, res: Response, next: NextFunction) {
+  const user = (req as any).user;
+  if (user && user.tier !== Tier.ENTERPRISE) {
+    return res.status(403).json({
+      status: false,
+      message: 'Please upgrade to enterprise plan to batch insert',
+    });
+  }
+  (req as any).user = user;
+  next();
+}
+export { errorHandler, loggerHandler, authHandler, tierHandler };

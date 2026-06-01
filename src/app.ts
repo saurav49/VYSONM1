@@ -9,8 +9,12 @@ import {
   hashPassword,
   isValidEmail,
 } from './utils/util';
-import { Tier } from './utils/enums';
-import { authHandler, errorHandler, loggerHandler } from './utils/middlewares';
+import {
+  authHandler,
+  errorHandler,
+  loggerHandler,
+  tierHandler,
+} from './utils/middlewares';
 const bcrypt = require('bcrypt');
 
 dotenv.config();
@@ -215,20 +219,13 @@ routes.patch('/shorten', authHandler, async (req, res) => {
     });
   }
 });
-routes.post('/shorten/batch', authHandler, async (req, res) => {
+routes.post('/shorten/batch', authHandler, tierHandler, async (req, res) => {
   try {
     const reqs = req.body;
     if (!reqs) {
       return res.status(400).json({
         status: false,
         message: 'Invalid request',
-      });
-    }
-    const user = (req as any).user;
-    if (user.tier !== Tier.ENTERPRISE) {
-      return res.status(403).json({
-        status: false,
-        message: 'Please upgrade to enterprise plan to batch insert',
       });
     }
     // allSettled gurantee the order that we pass
