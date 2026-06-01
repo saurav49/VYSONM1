@@ -12,3 +12,12 @@ describe('Ping checkpoint test', () => {
     });
   });
 });
+
+describe('Health checkpoint test', () => {
+  it('should check the health checkpoint and return success status', async () => {
+    const response = await request(app).get('/api/v1/health');
+    expect(response.statusCode).toBe(200);
+    expect(response.body.status).toEqual(true);
+    expect(response.body.database).toEqual('CONNECTED');
+  });
+});

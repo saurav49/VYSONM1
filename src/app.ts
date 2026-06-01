@@ -89,6 +89,12 @@ routes.post('/users', async (req, res) => {
 routes.get('/users/short-list', async (req, res) => {
   try {
     const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'X API Key missing',
+      });
+    }
     const userWithUrls = await prisma.user.findUnique({
       where: {
         apiKey: xApiKey as string,
@@ -97,20 +103,26 @@ routes.get('/users/short-list', async (req, res) => {
         shortens: true,
       },
     });
+    if (!userWithUrls) {
+      return res.status(401).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
     return res.status(200).json({
       status: true,
       data: {
-        id: userWithUrls?.id,
-        email: userWithUrls?.email,
-        name: userWithUrls?.name,
-        tier: userWithUrls?.tier,
-        shortens: userWithUrls?.shortens.map((r) => ({
-          id: r?.id,
-          originalUrl: r?.originalUrl,
-          shortCode: r?.shortCode,
-          clicks: r?.clicks,
-          lastAccessedAt: r?.lastAccessedAt,
-          expiryDate: r?.expiryDate,
+        id: userWithUrls.id,
+        email: userWithUrls.email,
+        name: userWithUrls.name,
+        tier: userWithUrls.tier,
+        shortens: userWithUrls.shortens.map((r) => ({
+          id: r.id,
+          originalUrl: r.originalUrl,
+          shortCode: r.shortCode,
+          clicks: r.clicks,
+          lastAccessedAt: r.lastAccessedAt,
+          expiryDate: r.expiryDate,
         })),
       },
     });
@@ -200,6 +212,12 @@ routes.patch('/shorten', async (req, res) => {
         password: hashedPassword,
       },
     });
+    if (result.count === 0) {
+      return res.status(403).json({
+        status: false,
+        message: 'Forbidden action',
+      });
+    }
     return res.status(200).json({
       status: true,
       data: result,
@@ -390,7 +408,7 @@ routes.delete('/short-codes/:code', async (req, res) => {
         message: 'User not found',
       });
     }
-    await prisma.urlShortener.updateMany({
+    const result = await prisma.urlShortener.updateMany({
       where: {
         shortCode: code as string,
         userId: user.id,
@@ -399,6 +417,12 @@ routes.delete('/short-codes/:code', async (req, res) => {
         deletedAt: new Date(),
       },
     });
+    if (result.count === 0) {
+      return res.status(403).json({
+        status: false,
+        message: 'Forbidden action',
+      });
+    }
     return res.status(200).json({
       status: true,
     });
