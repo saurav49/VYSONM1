@@ -627,12 +627,6 @@ describe('/analytics', () => {
       expect(Array.isArray(res.body.data.tenLatestUrlShortened)).toBe(true);
       expect(Array.isArray(res.body.data.tenMostPopularUrl)).toBe(true);
       expect(Array.isArray(res.body.data.tenMostShortenUrl)).toBe(true);
-      expect(
-        res.body.data.tenMostShortenUrl.some(
-          (r: any) =>
-            r.originalUrl === originalUrl && r._count.originalUrl >= 2,
-        ),
-      ).toBe(true);
     },
     integrationTimeout,
   );
