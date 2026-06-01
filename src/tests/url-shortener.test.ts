@@ -63,6 +63,25 @@ describe('URL Shortener integration test', () => {
       .set('x-api-key', apiKey);
     expect(deleteRes.status).toBe(200);
   });
+  it('should return 403 for non enterprise batch insert', async () => {
+    const shortCode = `abc-${Date.now()}`;
+    const shortCode2 = `abd-${Date.now()}`;
+    const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
+    const res = await request(app)
+      .post('/api/v1/shorten/batch')
+      .send([
+        {
+          code: shortCode,
+          originalUrl,
+        },
+        {
+          code: shortCode2,
+          originalUrl,
+        },
+      ])
+      .set('x-api-key', apiKey);
+    expect(res.statusCode).toBe(403);
+  });
 });
 
 // [Q8] What happens when you try to fetch a short code that doesn’t exist? Find out which http status code would suit best here. Add this as a test as well.
