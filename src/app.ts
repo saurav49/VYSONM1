@@ -10,6 +10,7 @@ import {
   isValidEmail,
 } from './utils/util';
 import {
+  apiRequestTimeHandler,
   authHandler,
   blacklistHandler,
   errorHandler,
@@ -437,5 +438,6 @@ routes.get('/analytics', async (req, res) => {
     throw e;
   }
 });
+app.use(apiRequestTimeHandler);
 
 export default app;

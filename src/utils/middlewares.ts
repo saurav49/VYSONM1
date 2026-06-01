@@ -14,7 +14,7 @@ function errorHandler(
 
   res.status(status).json({ error: message });
 }
-async function loggerHandler(req: Request, res: Response, next: NextFunction) {
+async function loggerHandler(req: Request, _res: Response, next: NextFunction) {
   await prisma.requestLogging
     .create({
       data: {
@@ -26,6 +26,7 @@ async function loggerHandler(req: Request, res: Response, next: NextFunction) {
       },
     })
     .catch((e) => console.error(e));
+  (req as any).startTime = new Date();
   next();
 }
 async function authHandler(req: Request, res: Response, next: NextFunction) {
@@ -94,10 +95,23 @@ async function blacklistHandler(
     next();
   }
 }
+async function apiRequestTimeHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const endTime = new Date();
+  const startTime = (req as any).startTime;
+  const timeElapsed = endTime.getTime() - startTime.getTime();
+  (res as any).timeTaken = timeElapsed;
+  console.log({ res });
+  next();
+}
 export {
   errorHandler,
   loggerHandler,
   authHandler,
   tierHandler,
   blacklistHandler,
+  apiRequestTimeHandler,
 };
