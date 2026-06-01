@@ -26,7 +26,6 @@ async function loggerHandler(req: Request, _res: Response, next: NextFunction) {
       },
     })
     .catch((e) => console.error(e));
-  (req as any).startTime = new Date();
   next();
 }
 async function authHandler(req: Request, res: Response, next: NextFunction) {
@@ -100,11 +99,16 @@ async function apiRequestTimeHandler(
   res: Response,
   next: NextFunction,
 ) {
-  const endTime = new Date();
-  const startTime = (req as any).startTime;
-  const timeElapsed = endTime.getTime() - startTime.getTime();
-  (res as any).timeTaken = timeElapsed;
-  console.log({ res });
+  const startTime = new Date();
+  res.setHeader('X-Response-Start-Time', `${startTime}ms`);
+  const originalJSON = res.json;
+
+  res.json = function (body) {
+    const endTime = new Date();
+    const timeElapsed = endTime.getTime() - startTime.getTime();
+    res.setHeader('X-Response-Time', `${timeElapsed}ms`);
+    return originalJSON.call(this, body);
+  };
   next();
 }
 export {
@@ -115,3 +119,5 @@ export {
   blacklistHandler,
   apiRequestTimeHandler,
 };
+
+// [Q6] Store the start time when the request is passing through this new middleware. While coming back, see the end time and calculate the difference as the elapsed time. Add this to the response header.

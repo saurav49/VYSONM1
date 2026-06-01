@@ -33,6 +33,7 @@ app.use(express.json());
 app.set('trust proxy', true);
 // logger middleware
 app.use(loggerHandler);
+app.use(apiRequestTimeHandler);
 app.use(blacklistHandler);
 app.use('/api/v1', routes);
 // error handler middleware
@@ -438,6 +439,4 @@ routes.get('/analytics', async (req, res) => {
     throw e;
   }
 });
-app.use(apiRequestTimeHandler);
-
 export default app;
