@@ -42,7 +42,7 @@ async function authHandler(req: Request, res: Response, next: NextFunction) {
   if (!user) {
     return res.status(401).json({
       status: false,
-      message: 'Unauthorized access, cannot edit',
+      message: 'Unauthorized access',
     });
   }
   (req as any).user = user;
@@ -50,7 +50,13 @@ async function authHandler(req: Request, res: Response, next: NextFunction) {
 }
 async function tierHandler(req: Request, res: Response, next: NextFunction) {
   const user = (req as any).user;
-  if (user && user.tier !== Tier.ENTERPRISE) {
+  if (!user) {
+    return res.status(401).json({
+      status: false,
+      message: 'Unauthorized access',
+    });
+  }
+  if (user.tier !== Tier.ENTERPRISE) {
     return res.status(403).json({
       status: false,
       message: 'Please upgrade to enterprise plan to batch insert',
