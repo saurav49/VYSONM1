@@ -397,6 +397,7 @@ routes.get('/analytics', async (req, res) => {
           originalUrl: 'desc',
         },
       },
+      take: 10,
     });
     return res.status(200).json({
       status: true,
