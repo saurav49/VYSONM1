@@ -119,5 +119,3 @@ export {
   blacklistHandler,
   apiRequestTimeHandler,
 };
-
-// [Q6] Store the start time when the request is passing through this new middleware. While coming back, see the end time and calculate the difference as the elapsed time. Add this to the response header.
