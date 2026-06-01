@@ -16,7 +16,7 @@ async function loggerHandler(req: Request, res: Response, next: NextFunction) {
     .create({
       data: {
         method: req?.method,
-        timestamp: `${new Date()}`,
+        timestamp: new Date(),
         userAgent: req['headers']['user-agent'],
         url: req?.originalUrl || req?.url,
         ip: req?.ip,

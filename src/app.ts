@@ -24,6 +24,7 @@ app.use(
   }),
 );
 app.use(express.json());
+app.set('trust proxy', true);
 // logger middleware
 app.use(loggerHandler);
 app.use('/api/v1', routes);
