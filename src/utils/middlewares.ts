@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { Tier } from './enums';
+import path from 'path';
+import { readFile, readFileSync } from 'node:fs';
 function errorHandler(
   err: any,
   _req: Request,
@@ -64,4 +66,29 @@ async function tierHandler(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
-export { errorHandler, loggerHandler, authHandler, tierHandler };
+async function blacklistHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const filePath = path.join(process.cwd(), 'src', 'config', 'blacklist.txt');
+  readFile(filePath, 'utf8', (_err, data) => {
+    const clientIP = req?.ip;
+    const blacklistIps = data.split('\n');
+    const isBlacklistIPFound = blacklistIps.some((r) => r === clientIP);
+    if (isBlacklistIPFound) {
+      return res.status(403).json({
+        status: false,
+        message: 'Unauthorized access',
+      });
+    }
+  });
+  next();
+}
+export {
+  errorHandler,
+  loggerHandler,
+  authHandler,
+  tierHandler,
+  blacklistHandler,
+};

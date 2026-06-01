@@ -11,6 +11,7 @@ import {
 } from './utils/util';
 import {
   authHandler,
+  blacklistHandler,
   errorHandler,
   loggerHandler,
   tierHandler,
@@ -31,6 +32,7 @@ app.use(express.json());
 app.set('trust proxy', true);
 // logger middleware
 app.use(loggerHandler);
+app.use(blacklistHandler);
 app.use('/api/v1', routes);
 // error handler middleware
 app.use(errorHandler);
