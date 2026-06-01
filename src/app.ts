@@ -220,16 +220,26 @@ routes.post('/shorten/batch', async (req, res) => {
         message: 'Please upgrade to enterprise plan to batch insert',
       });
     }
+    // allSettled gurantee the order that we pass
+    const hashedPasswordResponse = await Promise.allSettled(
+      reqs.map((r: { password?: string }) =>
+        r?.password ? hashPassword(r.password) : undefined,
+      ),
+    );
+    const hashedPasswordList = hashedPasswordResponse.map((r) =>
+      r.status === 'fulfilled' ? r.value : undefined,
+    );
     if (Array.isArray(reqs) && reqs.length > 0) {
       const r = await Promise.allSettled(
-        reqs.map((r) =>
-          handleCreateUrlShortener({
+        reqs.map((r, idx) => {
+          return handleCreateUrlShortener({
             req,
             originalUrl: r.originalUrl,
             expiryDate: r?.expiryDate,
             code: r?.code,
-          }),
-        ),
+            hashedPassword: hashedPasswordList[idx],
+          });
+        }),
       );
       const results = r.map((result) => {
         if (result.status === 'fulfilled') {
