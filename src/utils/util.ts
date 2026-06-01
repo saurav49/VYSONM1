@@ -64,30 +64,7 @@ const handleCreateUrlShortener = async ({
         },
       };
     }
-    const xApiKey = req.headers['x-api-key'];
-    if (!xApiKey) {
-      return {
-        statusCode: 401,
-        body: {
-          status: false,
-          message: 'API key is required',
-        },
-      };
-    }
-    const user = await prisma.user.findUnique({
-      where: {
-        apiKey: xApiKey as string,
-      },
-    });
-    if (!user) {
-      return {
-        statusCode: 401,
-        body: {
-          status: false,
-          message: 'User not found',
-        },
-      };
-    }
+    const user = (req as any).user;
     if (code) {
       const response = await prisma.urlShortener.findUnique({
         where: {
