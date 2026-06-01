@@ -5,12 +5,12 @@ import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
 import {
-  errorHandler,
   handleCreateUrlShortener,
   hashPassword,
   isValidEmail,
 } from './utils/util';
 import { Tier } from './utils/enums';
+import { errorHandler, loggerHandler } from './utils/middlewares';
 const bcrypt = require('bcrypt');
 
 dotenv.config();
@@ -25,7 +25,11 @@ app.use(
 );
 app.use(express.json());
 app.use('/api/v1', routes);
+// error handler middleware
 app.use(errorHandler);
+
+// logger middleware
+app.use(loggerHandler);
 
 // health endpoint
 routes.get('/ping', (_req, res) => {

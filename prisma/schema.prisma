@@ -39,3 +39,14 @@ model User {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   deletedAt   DateTime? @db.Timestamptz(6)
 }
+
+model RequestLogging {
+  id      Int @id @default(autoincrement())
+  method   String?
+  timestamp    String?
+  userAgent    String?
+  url    String?
+  ip    String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+}
