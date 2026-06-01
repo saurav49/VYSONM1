@@ -177,7 +177,7 @@ routes.patch('/shorten', async (req, res) => {
         message: 'Unauthorized access, cannot edit',
       });
     }
-    const result = await prisma.urlShortener.update({
+    const result = await prisma.urlShortener.updateMany({
       where: {
         shortCode: code,
         userId: user.id,
@@ -367,7 +367,7 @@ routes.delete('/short-codes/:code', async (req, res) => {
         message: 'User not found',
       });
     }
-    await prisma.urlShortener.update({
+    await prisma.urlShortener.updateMany({
       where: {
         shortCode: code as string,
         userId: user.id,
