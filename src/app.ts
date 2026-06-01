@@ -27,6 +27,7 @@ app.use(express.json());
 app.use('/api/v1', routes);
 app.use(errorHandler);
 
+// health endpoint
 routes.get('/ping', (_req, res) => {
   return res.status(200).json({
     status: true,
@@ -48,6 +49,8 @@ routes.get('/health', async (_req, res) => {
     });
   }
 });
+
+// user endpoint
 routes.post('/users', async (req, res) => {
   try {
     const { email, name } = req.body;
@@ -160,6 +163,8 @@ routes.delete('/users', async (req, res) => {
     });
   }
 });
+
+// shorten endpoint
 routes.post('/shorten', async (req, res) => {
   try {
     const { originalUrl, expiryDate, code, password } = req.body;
@@ -310,6 +315,60 @@ routes.post('/shorten/batch', async (req, res) => {
     });
   }
 });
+routes.delete('/short-codes/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+    if (!code) {
+      return res.status(400).json({
+        status: false,
+        message: 'Code is required',
+      });
+    }
+    const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'X API Key missing',
+      });
+    }
+    const user = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
+    const result = await prisma.urlShortener.updateMany({
+      where: {
+        shortCode: code as string,
+        userId: user.id,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+    if (result.count === 0) {
+      return res.status(403).json({
+        status: false,
+        message: 'Forbidden action',
+      });
+    }
+    return res.status(200).json({
+      status: true,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+
+// redirect endpoint
 routes.get('/redirect', async (req, res) => {
   const now = new Date().getTime();
   const { code, password } = req.query;
@@ -387,59 +446,8 @@ routes.post('/shorten-benchmark', async (req, res) => {
 
   return res.status(201).json(response);
 });
-routes.delete('/short-codes/:code', async (req, res) => {
-  try {
-    const { code } = req.params;
-    if (!code) {
-      return res.status(400).json({
-        status: false,
-        message: 'Code is required',
-      });
-    }
-    const xApiKey = req.headers['x-api-key'];
-    if (!xApiKey) {
-      return res.status(401).json({
-        status: false,
-        message: 'X API Key missing',
-      });
-    }
-    const user = await prisma.user.findUnique({
-      where: {
-        apiKey: xApiKey as string,
-      },
-    });
-    if (!user) {
-      return res.status(404).json({
-        status: false,
-        message: 'User not found',
-      });
-    }
-    const result = await prisma.urlShortener.updateMany({
-      where: {
-        shortCode: code as string,
-        userId: user.id,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-    if (result.count === 0) {
-      return res.status(403).json({
-        status: false,
-        message: 'Forbidden action',
-      });
-    }
-    return res.status(200).json({
-      status: true,
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
 
+// analytics endpoint
 routes.get('/analytics', async (req, res) => {
   try {
     const tenLatestUrlShortened = await prisma.urlShortener.findMany({
