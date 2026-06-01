@@ -180,6 +180,7 @@ routes.patch('/shorten', async (req, res) => {
     const result = await prisma.urlShortener.update({
       where: {
         shortCode: code,
+        userId: user.id,
       },
       data: {
         expiryDate: parsedExpiryDate,
@@ -359,20 +360,10 @@ routes.delete('/short-codes/:code', async (req, res) => {
         message: 'User not found',
       });
     }
-    const urlShortener = await prisma.urlShortener.findUnique({
-      where: {
-        shortCode: code as string,
-      },
-    });
-    if (urlShortener && urlShortener.userId !== user.id) {
-      return res.status(403).json({
-        status: false,
-        message: 'Forbidden action',
-      });
-    }
     await prisma.urlShortener.update({
       where: {
         shortCode: code as string,
+        userId: user.id,
       },
       data: {
         deletedAt: new Date(),
