@@ -1,22 +1,20 @@
 import dotenv from 'dotenv';
-import express, { Router, Request, Response, NextFunction } from 'express';
+import express, { Router } from 'express';
 import { randomBytes } from 'node:crypto';
+import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
+import {
+  errorHandler,
+  handleCreateUrlShortener,
+  hashPassword,
+  isValidEmail,
+} from './utils/util';
+import { Tier } from './utils/enums';
+const bcrypt = require('bcrypt');
 
 dotenv.config();
 
-function errorHandler(
-  err: any,
-  _req: Request,
-  res: Response,
-  _next: NextFunction,
-) {
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
-
-  res.status(status).json({ error: message });
-}
 const routes = Router();
 
 const app = express();
@@ -35,60 +33,277 @@ routes.get('/ping', (_req, res) => {
     message: 'Server up and running',
   });
 });
-routes.post('/shorten', async (req, res) => {
+routes.get('/health', async (_req, res) => {
   try {
-    const { originalUrl } = req.body;
-    if (!originalUrl) {
-      return res.status(400).json({
+    await prisma.$queryRaw`SELECT 1`;
+    return res.status(200).json({
+      status: true,
+      database: 'CONNECTED',
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(503).json({
+      status: false,
+      database: 'DOWN',
+    });
+  }
+});
+routes.post('/users', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    if (!email || !name) {
+      return res.status(401).json({
         status: false,
-        message: 'Original url is required',
+        message: 'Email and name are required',
       });
     }
-    const isValidUrl = URL.canParse(originalUrl);
-    if (!isValidUrl) {
-      return res.status(400).json({
+    if (!isValidEmail(email)) {
+      return res.status(401).json({
         status: false,
-        message: 'Invalid url',
+        message: 'Invalid email',
       });
     }
-    let shortCode = '';
-    shortCode = randomBytes(8).toString('base64url').slice(0, 10);
-    const response = await prisma.urlShortener.create({
+    const apiKey = crypto.randomBytes(32).toString('hex');
+    const result = await prisma.user.create({
       data: {
-        originalUrl,
-        shortCode,
+        email,
+        name,
+        apiKey,
       },
     });
     return res.status(201).json({
       status: true,
       data: {
-        originalUrl: response.originalUrl,
-        shortCode: response.shortCode,
+        id: result.id,
+        apiKey: result.apiKey,
       },
     });
   } catch (e) {
-    const error = e as {
-      code: string;
-      meta: {
-        modelName: string;
-      };
-    };
-    if (error.code === 'P2002' && error.meta?.modelName === 'UrlShortener') {
-      const reqUrl = await prisma.urlShortener.findUnique({
-        where: {
-          originalUrl: req.body.originalUrl,
-        },
+    console.error(e);
+    return res.status(500).json({
+      status: false,
+      message: e,
+    });
+  }
+});
+routes.get('/users/short-list', async (req, res) => {
+  try {
+    const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'X API Key missing',
       });
-      if (reqUrl) {
-        return res.status(200).json({
-          status: true,
-          data: {
-            originalUrl: reqUrl.originalUrl,
-            shortCode: reqUrl.shortCode,
-          },
-        });
-      }
     }
+    const userWithUrls = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+      include: {
+        shortens: true,
+      },
+    });
+    if (!userWithUrls) {
+      return res.status(401).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
+    return res.status(200).json({
+      status: true,
+      data: {
+        id: userWithUrls.id,
+        email: userWithUrls.email,
+        name: userWithUrls.name,
+        tier: userWithUrls.tier,
+        shortens: userWithUrls.shortens.map((r) => ({
+          id: r.id,
+          originalUrl: r.originalUrl,
+          shortCode: r.shortCode,
+          clicks: r.clicks,
+          lastAccessedAt: r.lastAccessedAt,
+          expiryDate: r.expiryDate,
+        })),
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+routes.delete('/users', async (req, res) => {
+  try {
+    const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'X API Key missing',
+      });
+    }
+    await prisma.user.update({
+      where: {
+        apiKey: xApiKey as string,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+    return res.status(200).json({
+      status: true,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+routes.post('/shorten', async (req, res) => {
+  try {
+    const { originalUrl, expiryDate, code, password } = req.body;
+    let hashedPassword = undefined;
+    if (password) {
+      hashedPassword = await hashPassword(password);
+    }
+    const result = await handleCreateUrlShortener({
+      req,
+      originalUrl,
+      expiryDate,
+      code,
+      hashedPassword,
+    });
+    return res.status(result.statusCode).json(result.body);
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+routes.patch('/shorten', async (req, res) => {
+  try {
+    const { code, expiryDate, password } = req.body;
+    const parsedExpiryDate = expiryDate ? new Date(expiryDate) : undefined;
+    let hashedPassword = undefined;
+    if (password) {
+      hashedPassword = await hashPassword(password);
+    }
+    const xApiKey = req.headers['x-api-key'];
+    const user = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+    });
+    if (!user) {
+      return res.status(401).json({
+        status: false,
+        message: 'Unauthorized access, cannot edit',
+      });
+    }
+    const result = await prisma.urlShortener.updateMany({
+      where: {
+        shortCode: code,
+        userId: user.id,
+      },
+      data: {
+        expiryDate: parsedExpiryDate,
+        password: hashedPassword,
+      },
+    });
+    if (result.count === 0) {
+      return res.status(403).json({
+        status: false,
+        message: 'Forbidden action',
+      });
+    }
+    return res.status(200).json({
+      status: true,
+      data: result,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      status: false,
+      error: e,
+    });
+  }
+});
+routes.post('/shorten/batch', async (req, res) => {
+  try {
+    const reqs = req.body;
+    if (!reqs) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid request',
+      });
+    }
+    const xApiKey = req.headers['x-api-key'];
+    const user = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+        deletedAt: null,
+      },
+    });
+    if (!user) {
+      return res.status(401).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
+    if (user.tier !== Tier.ENTERPRISE) {
+      return res.status(403).json({
+        status: false,
+        message: 'Please upgrade to enterprise plan to batch insert',
+      });
+    }
+    // allSettled gurantee the order that we pass
+    const hashedPasswordResponse = await Promise.allSettled(
+      reqs.map((r: { password?: string }) =>
+        r?.password ? hashPassword(r.password) : undefined,
+      ),
+    );
+    const hashedPasswordList = hashedPasswordResponse.map((r) =>
+      r.status === 'fulfilled' ? r.value : undefined,
+    );
+    if (reqs && Array.isArray(reqs) && reqs.length > 0) {
+      const r = await Promise.allSettled(
+        reqs.map((r, idx) => {
+          return handleCreateUrlShortener({
+            req,
+            originalUrl: r.originalUrl,
+            expiryDate: r?.expiryDate,
+            code: r?.code,
+            hashedPassword: hashedPasswordList[idx],
+          });
+        }),
+      );
+      const results = r.map((result) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        }
+        return {
+          statusCode: 500,
+          body: {
+            status: false,
+            message: result.reason,
+          },
+        };
+      });
+      const statusCode = results.every((result) => result.statusCode === 201)
+        ? 201
+        : 207;
+
+      return res.status(statusCode).json({
+        status: statusCode === 201,
+        data: results,
+      });
+    }
+    return res.status(400).json({
+      status: false,
+      message: 'No batch data found',
+    });
+  } catch (e) {
     return res.status(500).json({
       status: false,
       error: e,
@@ -96,7 +311,8 @@ routes.post('/shorten', async (req, res) => {
   }
 });
 routes.get('/redirect', async (req, res) => {
-  const { code } = req.query;
+  const now = new Date().getTime();
+  const { code, password } = req.query;
   if (!code) {
     return res.status(400).json({
       status: false,
@@ -106,15 +322,53 @@ routes.get('/redirect', async (req, res) => {
   const result = await prisma.urlShortener.findUnique({
     where: {
       shortCode: code as string,
+      deletedAt: null,
     },
   });
-  const originalUrl = result ? result?.originalUrl : undefined;
+  if (!result) {
+    return res.status(404).json({
+      status: false,
+      message: 'URL not found',
+    });
+  }
+  const originalUrl = result?.originalUrl;
   if (!originalUrl) {
     return res.status(404).json({
       status: false,
       message: 'URL not found',
     });
   }
+  if (result?.password && !password) {
+    return res.status(401).json({
+      status: false,
+      message: 'Unauthorized access',
+    });
+  }
+  if (result?.password && password) {
+    const isMatch = await bcrypt.compare(password, result.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        status: false,
+        message: 'Unauthorized access',
+      });
+    }
+  }
+  const expiryDate = result.expiryDate;
+  if (expiryDate && new Date(expiryDate).getTime() < now) {
+    return res.status(404).json({
+      status: false,
+      message: 'URL expired',
+    });
+  }
+  await prisma.urlShortener.update({
+    where: {
+      shortCode: code as string,
+    },
+    data: {
+      clicks: typeof result?.clicks === 'number' ? result.clicks + 1 : 0,
+      lastAccessedAt: new Date(),
+    },
+  });
   return res.redirect(originalUrl);
 });
 
@@ -133,8 +387,6 @@ routes.post('/shorten-benchmark', async (req, res) => {
 
   return res.status(201).json(response);
 });
-// [Q9] What if we want to delete a short code? Add this functionality using a DELETE method. Which endpoint would suit better? /shorten or /redirect or something else? Write tests too.
-
 routes.delete('/short-codes/:code', async (req, res) => {
   try {
     const { code } = req.params;
@@ -144,11 +396,39 @@ routes.delete('/short-codes/:code', async (req, res) => {
         message: 'Code is required',
       });
     }
-    await prisma.urlShortener.delete({
+    const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'X API Key missing',
+      });
+    }
+    const user = await prisma.user.findUnique({
       where: {
-        shortCode: code as string,
+        apiKey: xApiKey as string,
       },
     });
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: 'User not found',
+      });
+    }
+    const result = await prisma.urlShortener.updateMany({
+      where: {
+        shortCode: code as string,
+        userId: user.id,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+    if (result.count === 0) {
+      return res.status(403).json({
+        status: false,
+        message: 'Forbidden action',
+      });
+    }
     return res.status(200).json({
       status: true,
     });
@@ -160,217 +440,43 @@ routes.delete('/short-codes/:code', async (req, res) => {
   }
 });
 
-// routes.get('/get-db-info', async (_req, res) => {
-//   const r = await query(
-//     `SELECT pg_size_pretty(pg_total_relation_size('url_shortener'));`,
-//   );
-//   const rowsInfo = await query(
-//     `
-//     SELECT COUNT(*)
-//     FROM url_shortener
-//     `,
-//   );
-//   return res.status(200).json({
-//     status: true,
-//     data: { size: r?.rows[0], rows: rowsInfo?.rows[0]?.count },
-//   });
-// });
-// [];
-// routes.get('/get-original-urls', async (_req, res) => {
-//   const ITERATIONS = 10000000;
-//   const start = performance.now();
-//   for (let i = 0; i < ITERATIONS; i++) {
-//     await query(
-//       `
-//                 SELECT original_url
-//                 FROM url_shortener
-//                 WHERE short_code IN ('cdYfjjnbNl', 'gBAoMksiai', '1YETtz-Bg4', 'ij9yPVlQ1G', 'c9mQlN3l0Z')
-//       `,
-//     );
-//   }
-//   const end = performance.now();
-//   console.log(
-//     `API (/get-original-urls) ran 1M times took ${(end - start).toFixed(2)} ms`,
-//   );
-//   return res.status(200).json({
-//     status: true,
-//     message: 'Executed successfully',
-//   });
-// });
-// routes.post('/iterative-insert-short', async (req, res) => {
-//   try {
-//     const start = performance.now();
-//     const { iteration } = req.body;
-//     if (typeof iteration !== 'number' || iteration <= 0) {
-//       return res.status(400).json({
-//         status: false,
-//         message: 'Invalid iteration',
-//       });
-//     }
-//     for (let i = 0; i < iteration; i++) {
-//       const originalUrl = `http://examplet/${i}`;
-//       let shortCode = '';
-//       shortCode = nanoid(10);
-//       const q = await query(
-//         `
-//                 SELECT *
-//                 FROM "url_shortener"
-//                 WHERE short_code=$1
-//                 `,
-//         [shortCode],
-//       );
-//       while (q?.rowCount && q.rowCount > 0) {
-//         shortCode = nanoid(10);
-//       }
-//       await insertIntoTable({
-//         original_url: originalUrl,
-//         short_code: shortCode,
-//       });
-//     }
-//     const end = performance.now();
-//     console.log(
-//       `API (/iterative-insert-short) took ${(end - start).toFixed(2)} ms`,
-//     );
-//     return res.status(201).json({
-//       status: true,
-//       message: 'Successful!!',
-//     });
-//   } catch (e) {
-//     return res.status(500).json({
-//       status: false,
-//       error: e,
-//     });
-//   }
-// });
-// routes.post('/batch-insert-short-one-million', async (req, res) => {
-//   try {
-//     const start = performance.now();
-//     const ITERATION = 1000000;
-//     const BATCH = 500;
-//     for (let i = 0; i < ITERATION; i += BATCH) {
-//       let values: Array<string> = [];
-//       for (let j = 0; j < BATCH; j++) {
-//         const randomNum = i + j;
-//         const originalUrl = `https://google.com/${randomNum}`;
-//         let shortCode = '';
-//         shortCode = nanoid(10);
-//         values.push(`('${originalUrl}', '${shortCode}')`);
-//       }
-//       await query(
-//         `
-//                 INSERT INTO url_shortener (original_url, short_code)
-//                 VALUES ${values.join(',')}
-//             `,
-//       );
-//     }
-//     const end = performance.now();
-//     console.log(
-//       `API (/batch-insert-short-one-million) took ${(end - start).toFixed(2)} ms`,
-//     );
-//     return res.status(201).json({
-//       status: true,
-//       message: 'Successful!!',
-//     });
-//   } catch (e) {
-//     return res.status(500).json({
-//       status: false,
-//       error: e,
-//     });
-//   }
-// });
-// routes.post('/batch-insert-short-ten-million', async (req, res) => {
-//   try {
-//     const start = performance.now();
-//     const ITERATION = 10000000;
-//     const BATCH = 500;
-//     await query('BEGIN');
-//     for (let i = 0; i < ITERATION; i += BATCH) {
-//       let values: Array<string> = [];
-//       for (let j = 0; j < BATCH; j++) {
-//         const randomNum = i + j;
-//         const originalUrl = `https://google.com/${randomNum}`;
-//         let shortCode = '';
-//         shortCode = nanoid(10);
-//         values.push(`('${originalUrl}', '${shortCode}')`);
-//       }
-//       await query(
-//         `
-//             INSERT INTO url_shortener (original_url, short_code)
-//             VALUES ${values.join(',')}
-//         `,
-//       );
-//     }
-//     await query('COMMIT'); // use to group multiple operations
-//     const end = performance.now();
-//     console.log(
-//       `API (/batch-insert-short-ten-million) took ${(end - start).toFixed(2)} ms`,
-//     );
-//     return res.status(201).json({
-//       status: true,
-//       message: 'Successful!!',
-//     });
-//   } catch (e) {
-//     await query('ROLLBACK');
-//     return res.status(500).json({
-//       status: false,
-//       error: e,
-//     });
-//   }
-// });
-// routes.post('/batch-insert-short-hundred-million', async (req, res) => {
-//   try {
-//     const start = performance.now();
-//     const ITERATION = 100000000;
-//     const BATCH = 1000;
-//     for (let i = 0; i < ITERATION; i += BATCH) {
-//       try {
-//         await query('BEGIN');
-//         let failedInserts: Array<string> = [];
-//         const batchValues = [];
-//         let values: Array<string> = [];
-//         for (let j = 0; j < BATCH; j++) {
-//           const randomNum = i + j;
-//           const originalUrl = `https://google.com/${randomNum}`;
-//           let shortCode = '';
-//           shortCode = nanoid(10);
-//           values.push(`('${originalUrl}', '${shortCode}')`);
-//           batchValues.push(originalUrl);
-//         }
-//         const tempFailedInserts = await batchInsert({
-//           values,
-//           batchValues,
-//         });
-//         failedInserts.push(...tempFailedInserts);
-//         while (failedInserts.length > 0) {
-//           console.log(`Failed batch: ${i}`);
-//           const redoInserts = failedInserts.map((url) => {
-//             const shortCode = nanoid(10);
-//             return `('${url}', '${shortCode}')`;
-//           });
-//           failedInserts = await batchInsert({
-//             values: redoInserts,
-//             batchValues: failedInserts,
-//           });
-//         }
-//         await query('COMMIT'); // use to group multiple operations
-//       } catch (e) {
-//         await query('ROLLBACK');
-//       }
-//     }
-//     const end = performance.now();
-//     console.log(
-//       `API (/batch-insert-short-hundred-million) took ${(end - start).toFixed(2)} ms`,
-//     );
-//     return res.status(201).json({
-//       status: true,
-//       message: 'Successful!!',
-//     });
-//   } catch (e) {
-//     return res.status(500).json({
-//       status: false,
-//       error: e,
-//     });
-//   }
-// });
+routes.get('/analytics', async (req, res) => {
+  try {
+    const tenLatestUrlShortened = await prisma.urlShortener.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+    const tenMostPopularUrl = await prisma.urlShortener.findMany({
+      where: { deletedAt: null },
+      orderBy: [{ clicks: 'desc' }, { lastAccessedAt: 'desc' }],
+      take: 10,
+    });
+    const tenMostShortenUrl = await prisma.urlShortener.groupBy({
+      where: { deletedAt: null },
+      by: ['originalUrl'],
+      _count: {
+        originalUrl: true,
+      },
+      orderBy: {
+        _count: {
+          originalUrl: 'desc',
+        },
+      },
+      take: 10,
+    });
+    return res.status(200).json({
+      status: true,
+      data: {
+        tenLatestUrlShortened,
+        tenMostPopularUrl,
+        tenMostShortenUrl,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+});
 
 export default app;
