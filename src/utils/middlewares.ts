@@ -25,5 +25,27 @@ async function loggerHandler(req: Request, res: Response, next: NextFunction) {
     .catch((e) => console.error(e));
   next();
 }
+async function authHandler(req: Request, res: Response, next: NextFunction) {
+  const xApiKey = req.headers['x-api-key'];
+  if (!xApiKey) {
+    return res.status(401).json({
+      status: false,
+      message: 'X API Key missing',
+    });
+  }
+  const user = await prisma.user.findUnique({
+    where: {
+      apiKey: xApiKey as string,
+    },
+  });
+  if (!user) {
+    return res.status(401).json({
+      status: false,
+      message: 'Unauthorized access, cannot edit',
+    });
+  }
+  (req as any).user = user;
+  next();
+}
 
-export { errorHandler, loggerHandler };
+export { errorHandler, loggerHandler, authHandler };

@@ -10,7 +10,7 @@ import {
   isValidEmail,
 } from './utils/util';
 import { Tier } from './utils/enums';
-import { errorHandler, loggerHandler } from './utils/middlewares';
+import { authHandler, errorHandler, loggerHandler } from './utils/middlewares';
 const bcrypt = require('bcrypt');
 
 dotenv.config();
@@ -93,18 +93,12 @@ routes.post('/users', async (req, res) => {
     });
   }
 });
-routes.get('/users/short-list', async (req, res) => {
+routes.get('/users/short-list', authHandler, async (req, res) => {
   try {
-    const xApiKey = req.headers['x-api-key'];
-    if (!xApiKey) {
-      return res.status(401).json({
-        status: false,
-        message: 'X API Key missing',
-      });
-    }
+    const user = (req as any).user;
     const userWithUrls = await prisma.user.findUnique({
       where: {
-        apiKey: xApiKey as string,
+        apiKey: user.apiKey,
       },
       include: {
         shortens: true,
@@ -140,18 +134,12 @@ routes.get('/users/short-list', async (req, res) => {
     });
   }
 });
-routes.delete('/users', async (req, res) => {
+routes.delete('/users', authHandler, async (req, res) => {
   try {
-    const xApiKey = req.headers['x-api-key'];
-    if (!xApiKey) {
-      return res.status(401).json({
-        status: false,
-        message: 'X API Key missing',
-      });
-    }
+    const user = (req as any).user;
     await prisma.user.update({
       where: {
-        apiKey: xApiKey as string,
+        apiKey: user.apiKey,
       },
       data: {
         deletedAt: new Date(),
@@ -191,7 +179,7 @@ routes.post('/shorten', async (req, res) => {
     });
   }
 });
-routes.patch('/shorten', async (req, res) => {
+routes.patch('/shorten', authHandler, async (req, res) => {
   try {
     const { code, expiryDate, password } = req.body;
     const parsedExpiryDate = expiryDate ? new Date(expiryDate) : undefined;
@@ -199,18 +187,7 @@ routes.patch('/shorten', async (req, res) => {
     if (password) {
       hashedPassword = await hashPassword(password);
     }
-    const xApiKey = req.headers['x-api-key'];
-    const user = await prisma.user.findUnique({
-      where: {
-        apiKey: xApiKey as string,
-      },
-    });
-    if (!user) {
-      return res.status(401).json({
-        status: false,
-        message: 'Unauthorized access, cannot edit',
-      });
-    }
+    const user = (req as any).user;
     const result = await prisma.urlShortener.updateMany({
       where: {
         shortCode: code,
@@ -238,7 +215,7 @@ routes.patch('/shorten', async (req, res) => {
     });
   }
 });
-routes.post('/shorten/batch', async (req, res) => {
+routes.post('/shorten/batch', authHandler, async (req, res) => {
   try {
     const reqs = req.body;
     if (!reqs) {
@@ -247,19 +224,7 @@ routes.post('/shorten/batch', async (req, res) => {
         message: 'Invalid request',
       });
     }
-    const xApiKey = req.headers['x-api-key'];
-    const user = await prisma.user.findUnique({
-      where: {
-        apiKey: xApiKey as string,
-        deletedAt: null,
-      },
-    });
-    if (!user) {
-      return res.status(401).json({
-        status: false,
-        message: 'User not found',
-      });
-    }
+    const user = (req as any).user;
     if (user.tier !== Tier.ENTERPRISE) {
       return res.status(403).json({
         status: false,
@@ -319,7 +284,7 @@ routes.post('/shorten/batch', async (req, res) => {
     });
   }
 });
-routes.delete('/short-codes/:code', async (req, res) => {
+routes.delete('/short-codes/:code', authHandler, async (req, res) => {
   try {
     const { code } = req.params;
     if (!code) {
@@ -328,24 +293,7 @@ routes.delete('/short-codes/:code', async (req, res) => {
         message: 'Code is required',
       });
     }
-    const xApiKey = req.headers['x-api-key'];
-    if (!xApiKey) {
-      return res.status(401).json({
-        status: false,
-        message: 'X API Key missing',
-      });
-    }
-    const user = await prisma.user.findUnique({
-      where: {
-        apiKey: xApiKey as string,
-      },
-    });
-    if (!user) {
-      return res.status(404).json({
-        status: false,
-        message: 'User not found',
-      });
-    }
+    const user = (req as any).user;
     const result = await prisma.urlShortener.updateMany({
       where: {
         shortCode: code as string,
