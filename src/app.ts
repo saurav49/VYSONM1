@@ -185,7 +185,7 @@ routes.post('/shorten', async (req, res) => {
 routes.patch('/shorten', async (req, res) => {
   try {
     const { code, expiryDate, password } = req.body;
-    const parsedExpiryDate = new Date(expiryDate);
+    const parsedExpiryDate = expiryDate ? new Date(expiryDate) : undefined;
     let hashedPassword = undefined;
     if (password) {
       hashedPassword = await hashPassword(password);
@@ -232,6 +232,12 @@ routes.patch('/shorten', async (req, res) => {
 routes.post('/shorten/batch', async (req, res) => {
   try {
     const reqs = req.body;
+    if (!reqs) {
+      return res.status(400).json({
+        status: false,
+        message: 'Invalid request',
+      });
+    }
     const xApiKey = req.headers['x-api-key'];
     const user = await prisma.user.findUnique({
       where: {
@@ -260,7 +266,7 @@ routes.post('/shorten/batch', async (req, res) => {
     const hashedPasswordList = hashedPasswordResponse.map((r) =>
       r.status === 'fulfilled' ? r.value : undefined,
     );
-    if (Array.isArray(reqs) && reqs.length > 0) {
+    if (reqs && Array.isArray(reqs) && reqs.length > 0) {
       const r = await Promise.allSettled(
         reqs.map((r, idx) => {
           return handleCreateUrlShortener({
