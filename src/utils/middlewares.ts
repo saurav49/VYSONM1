@@ -62,7 +62,6 @@ async function tierHandler(req: Request, res: Response, next: NextFunction) {
       message: 'Please upgrade to enterprise plan to batch insert',
     });
   }
-  (req as any).user = user;
   next();
 }
 export { errorHandler, loggerHandler, authHandler, tierHandler };
