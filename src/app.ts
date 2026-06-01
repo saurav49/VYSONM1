@@ -154,16 +154,22 @@ routes.post('/shorten', async (req, res) => {
 routes.patch('/shorten', async (req, res) => {
   try {
     const { code, expiryDate, password } = req.body;
-    if (expiryDate) {
-      return res.status(401).json({
-        status: false,
-        message: 'Expiry date missing',
-      });
-    }
     const parsedExpiryDate = new Date(expiryDate);
     let hashedPassword = undefined;
     if (password) {
       hashedPassword = await hashPassword(password);
+    }
+    const xApiKey = req.headers['x-api-key'];
+    const user = await prisma.user.findUnique({
+      where: {
+        apiKey: xApiKey as string,
+      },
+    });
+    if (!user) {
+      return res.status(401).json({
+        status: false,
+        message: 'Unauthorized access, cannot edit',
+      });
     }
     const result = await prisma.urlShortener.update({
       where: {
