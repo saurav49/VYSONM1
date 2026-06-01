@@ -24,12 +24,11 @@ app.use(
   }),
 );
 app.use(express.json());
+// logger middleware
+app.use(loggerHandler);
 app.use('/api/v1', routes);
 // error handler middleware
 app.use(errorHandler);
-
-// logger middleware
-app.use(loggerHandler);
 
 // health endpoint
 routes.get('/ping', (_req, res) => {

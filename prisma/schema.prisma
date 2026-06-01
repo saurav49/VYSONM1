@@ -43,7 +43,7 @@ model User {
 model RequestLogging {
   id      Int @id @default(autoincrement())
   method   String?
-  timestamp    String?
+  timestamp    DateTime? @default(now()) @db.Timestamptz(6)
   userAgent    String?
   url    String?
   ip    String?

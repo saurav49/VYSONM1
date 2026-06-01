@@ -12,15 +12,17 @@ function errorHandler(
   res.status(status).json({ error: message });
 }
 async function loggerHandler(req: Request, res: Response, next: NextFunction) {
-  await prisma.requestLogging.create({
-    data: {
-      method: req?.method,
-      timestamp: `${new Date()}`,
-      userAgent: req['headers']['user-agent'],
-      url: req?.originalUrl || req?.url,
-      ip: req?.ip,
-    },
-  });
+  await prisma.requestLogging
+    .create({
+      data: {
+        method: req?.method,
+        timestamp: `${new Date()}`,
+        userAgent: req['headers']['user-agent'],
+        url: req?.originalUrl || req?.url,
+        ip: req?.ip,
+      },
+    })
+    .catch((e) => console.error(e));
   next();
 }
 
