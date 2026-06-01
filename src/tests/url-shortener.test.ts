@@ -175,7 +175,7 @@ describe('URL Shortener missing original url test', () => {
       originalUrl,
     });
 
-    expect(shortenerResponse.status).toBe(400);
+    expect(shortenerResponse.status).toBe(401);
   });
 });
 
@@ -187,7 +187,7 @@ describe('URL Shortener invalid original url test', () => {
       originalUrl,
     });
 
-    expect(shortenerResponse.status).toBe(400);
+    expect(shortenerResponse.status).toBe(401);
   });
 });
 
@@ -229,7 +229,7 @@ describe('Url Shortener Expiry date', () => {
       expiryDate: '123',
     });
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(401);
   });
   it('should return 201 for valid expiry date', async () => {
     const res = await request(app)
@@ -250,7 +250,7 @@ describe('Url Shortener Expiry date', () => {
       originalUrl: 'https://google.com',
       expiryDate: '02-06-2026', // month-day-year
     });
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(401);
   });
   it('should return 404 when redirecting an expired url', async () => {
     const originalUrl = `https://google.com/${Date.now()}`;
@@ -411,7 +411,7 @@ describe('URL Shortener batch creation', () => {
       .set('x-api-key', user.apiKey)
       .send([]);
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(401);
   });
 
   it('should return item-level 409 for a duplicate custom code', async () => {

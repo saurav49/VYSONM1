@@ -64,30 +64,7 @@ const handleCreateUrlShortener = async ({
         },
       };
     }
-    const xApiKey = req.headers['x-api-key'];
-    if (!xApiKey) {
-      return {
-        statusCode: 401,
-        body: {
-          status: false,
-          message: 'API key is required',
-        },
-      };
-    }
-    const user = await prisma.user.findUnique({
-      where: {
-        apiKey: xApiKey as string,
-      },
-    });
-    if (!user) {
-      return {
-        statusCode: 401,
-        body: {
-          status: false,
-          message: 'User not found',
-        },
-      };
-    }
+    const user = (req as any).user;
     if (code) {
       const response = await prisma.urlShortener.findUnique({
         where: {
@@ -134,17 +111,6 @@ const handleCreateUrlShortener = async ({
     };
   }
 };
-function errorHandler(
-  err: any,
-  _req: Request,
-  res: Response,
-  _next: NextFunction,
-) {
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
-
-  res.status(status).json({ error: message });
-}
 async function hashPassword(password: string) {
   const saltRounds = 10;
   return await bcrypt.hash(password, saltRounds);
@@ -153,6 +119,5 @@ export {
   isValidEmail,
   isValidDateTime,
   handleCreateUrlShortener,
-  errorHandler,
   hashPassword,
 };
