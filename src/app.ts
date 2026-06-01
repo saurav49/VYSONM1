@@ -111,6 +111,12 @@ routes.get('/users/short-list', async (req, res) => {
 routes.delete('/users', async (req, res) => {
   try {
     const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'X API Key missing',
+      });
+    }
     await prisma.user.update({
       where: {
         apiKey: xApiKey as string,
@@ -207,7 +213,7 @@ routes.post('/shorten/batch', async (req, res) => {
       });
     }
     if (user.tier !== Tier.ENTERPRISE) {
-      return res.status(401).json({
+      return res.status(403).json({
         status: false,
         message: 'Please upgrade to enterprise plan to batch insert',
       });
@@ -336,6 +342,12 @@ routes.delete('/short-codes/:code', async (req, res) => {
       });
     }
     const xApiKey = req.headers['x-api-key'];
+    if (!xApiKey) {
+      return res.status(401).json({
+        status: false,
+        message: 'X API Key missing',
+      });
+    }
     const user = await prisma.user.findUnique({
       where: {
         apiKey: xApiKey as string,
