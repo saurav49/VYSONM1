@@ -33,9 +33,9 @@ app.use(
 app.use(express.json());
 app.set('trust proxy', true);
 // logger middleware
-app.use(loggerHandler);
-app.use(apiRequestTimeHandler);
-app.use(blacklistHandler);
+app.use(timeMiddlewareHandler('logger', loggerHandler));
+app.use(timeMiddlewareHandler('api-request-time', apiRequestTimeHandler));
+app.use(timeMiddlewareHandler('blacklist', blacklistHandler));
 app.use('/api/v1', routes);
 // error handler middleware
 app.use(errorHandler);
@@ -102,225 +102,250 @@ routes.post('/users', async (req, res) => {
     });
   }
 });
-routes.get('/users/short-list', authHandler, async (req, res) => {
-  try {
-    const user = (req as any).user;
-    const userWithUrls = await prisma.user.findUnique({
-      where: {
-        apiKey: user.apiKey,
-      },
-      include: {
-        shortens: true,
-      },
-    });
-    if (!userWithUrls) {
-      return res.status(401).json({
+routes.get(
+  '/users/short-list',
+  timeMiddlewareHandler('auth', authHandler),
+  async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const userWithUrls = await prisma.user.findUnique({
+        where: {
+          apiKey: user.apiKey,
+        },
+        include: {
+          shortens: true,
+        },
+      });
+      if (!userWithUrls) {
+        return res.status(401).json({
+          status: false,
+          message: 'User not found',
+        });
+      }
+      return res.status(200).json({
+        status: true,
+        data: {
+          id: userWithUrls.id,
+          email: userWithUrls.email,
+          name: userWithUrls.name,
+          tier: userWithUrls.tier,
+          shortens: userWithUrls.shortens.map((r) => ({
+            id: r.id,
+            originalUrl: r.originalUrl,
+            shortCode: r.shortCode,
+            clicks: r.clicks,
+            lastAccessedAt: r.lastAccessedAt,
+            expiryDate: r.expiryDate,
+          })),
+        },
+      });
+    } catch (e) {
+      return res.status(500).json({
         status: false,
-        message: 'User not found',
+        error: e,
       });
     }
-    return res.status(200).json({
-      status: true,
-      data: {
-        id: userWithUrls.id,
-        email: userWithUrls.email,
-        name: userWithUrls.name,
-        tier: userWithUrls.tier,
-        shortens: userWithUrls.shortens.map((r) => ({
-          id: r.id,
-          originalUrl: r.originalUrl,
-          shortCode: r.shortCode,
-          clicks: r.clicks,
-          lastAccessedAt: r.lastAccessedAt,
-          expiryDate: r.expiryDate,
-        })),
-      },
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
-routes.delete('/users', authHandler, async (req, res) => {
-  try {
-    const user = (req as any).user;
-    await prisma.user.update({
-      where: {
-        apiKey: user.apiKey,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-    return res.status(200).json({
-      status: true,
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
+  },
+);
+routes.delete(
+  '/users',
+  timeMiddlewareHandler('auth', authHandler),
+  async (req, res) => {
+    try {
+      const user = (req as any).user;
+      await prisma.user.update({
+        where: {
+          apiKey: user.apiKey,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+      return res.status(200).json({
+        status: true,
+      });
+    } catch (e) {
+      return res.status(500).json({
+        status: false,
+        error: e,
+      });
+    }
+  },
+);
 
 // shorten endpoint
-routes.post('/shorten', async (req, res) => {
-  try {
-    const { originalUrl, expiryDate, code, password } = req.body;
-    let hashedPassword = undefined;
-    if (password) {
-      hashedPassword = await hashPassword(password);
-    }
-    const result = await handleCreateUrlShortener({
-      req,
-      originalUrl,
-      expiryDate,
-      code,
-      hashedPassword,
-    });
-    return res.status(result.statusCode).json(result.body);
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
-routes.patch('/shorten', authHandler, async (req, res) => {
-  try {
-    const { code, expiryDate, password } = req.body;
-    const parsedExpiryDate = expiryDate ? new Date(expiryDate) : undefined;
-    let hashedPassword = undefined;
-    if (password) {
-      hashedPassword = await hashPassword(password);
-    }
-    const user = (req as any).user;
-    const result = await prisma.urlShortener.updateMany({
-      where: {
-        shortCode: code,
-        userId: user.id,
-      },
-      data: {
-        expiryDate: parsedExpiryDate,
-        password: hashedPassword,
-      },
-    });
-    if (result.count === 0) {
-      return res.status(403).json({
+routes.post(
+  '/shorten',
+  timeMiddlewareHandler('auth', authHandler),
+  async (req, res) => {
+    try {
+      const { originalUrl, expiryDate, code, password } = req.body;
+      let hashedPassword = undefined;
+      if (password) {
+        hashedPassword = await hashPassword(password);
+      }
+      const result = await handleCreateUrlShortener({
+        req,
+        originalUrl,
+        expiryDate,
+        code,
+        hashedPassword,
+      });
+      return res.status(result.statusCode).json(result.body);
+    } catch (e) {
+      return res.status(500).json({
         status: false,
-        message: 'Forbidden action',
+        error: e,
       });
     }
-    return res.status(200).json({
-      status: true,
-      data: result,
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
-routes.post('/shorten/batch', authHandler, tierHandler, async (req, res) => {
-  try {
-    const reqs = req.body;
-    if (!reqs) {
-      return res.status(400).json({
+  },
+);
+routes.patch(
+  '/shorten',
+  timeMiddlewareHandler('auth', authHandler),
+  async (req, res) => {
+    try {
+      const { code, expiryDate, password } = req.body;
+      const parsedExpiryDate = expiryDate ? new Date(expiryDate) : undefined;
+      let hashedPassword = undefined;
+      if (password) {
+        hashedPassword = await hashPassword(password);
+      }
+      const user = (req as any).user;
+      const result = await prisma.urlShortener.updateMany({
+        where: {
+          shortCode: code,
+          userId: user.id,
+        },
+        data: {
+          expiryDate: parsedExpiryDate,
+          password: hashedPassword,
+        },
+      });
+      if (result.count === 0) {
+        return res.status(403).json({
+          status: false,
+          message: 'Forbidden action',
+        });
+      }
+      return res.status(200).json({
+        status: true,
+        data: result,
+      });
+    } catch (e) {
+      return res.status(500).json({
         status: false,
-        message: 'Invalid request',
+        error: e,
       });
     }
-    // allSettled gurantee the order that we pass
-    const hashedPasswordResponse = await Promise.allSettled(
-      reqs.map((r: { password?: string }) =>
-        r?.password ? hashPassword(r.password) : undefined,
-      ),
-    );
-    const hashedPasswordList = hashedPasswordResponse.map((r) =>
-      r.status === 'fulfilled' ? r.value : undefined,
-    );
-    if (reqs && Array.isArray(reqs) && reqs.length > 0) {
-      const r = await Promise.allSettled(
-        reqs.map((r, idx) => {
-          return handleCreateUrlShortener({
-            req,
-            originalUrl: r.originalUrl,
-            expiryDate: r?.expiryDate,
-            code: r?.code,
-            hashedPassword: hashedPasswordList[idx],
-          });
-        }),
+  },
+);
+routes.post(
+  '/shorten/batch',
+  timeMiddlewareHandler('auth', authHandler),
+  timeMiddlewareHandler('tier', tierHandler),
+  async (req, res) => {
+    try {
+      const reqs = req.body;
+      if (!reqs) {
+        return res.status(400).json({
+          status: false,
+          message: 'Invalid request',
+        });
+      }
+      // allSettled gurantee the order that we pass
+      const hashedPasswordResponse = await Promise.allSettled(
+        reqs.map((r: { password?: string }) =>
+          r?.password ? hashPassword(r.password) : undefined,
+        ),
       );
-      const results = r.map((result) => {
-        if (result.status === 'fulfilled') {
-          return result.value;
-        }
-        return {
-          statusCode: 500,
-          body: {
-            status: false,
-            message: result.reason,
-          },
-        };
-      });
-      const statusCode = results.every((result) => result.statusCode === 201)
-        ? 201
-        : 207;
+      const hashedPasswordList = hashedPasswordResponse.map((r) =>
+        r.status === 'fulfilled' ? r.value : undefined,
+      );
+      if (reqs && Array.isArray(reqs) && reqs.length > 0) {
+        const r = await Promise.allSettled(
+          reqs.map((r, idx) => {
+            return handleCreateUrlShortener({
+              req,
+              originalUrl: r.originalUrl,
+              expiryDate: r?.expiryDate,
+              code: r?.code,
+              hashedPassword: hashedPasswordList[idx],
+            });
+          }),
+        );
+        const results = r.map((result) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          return {
+            statusCode: 500,
+            body: {
+              status: false,
+              message: result.reason,
+            },
+          };
+        });
+        const statusCode = results.every((result) => result.statusCode === 201)
+          ? 201
+          : 207;
 
-      return res.status(statusCode).json({
-        status: statusCode === 201,
-        data: results,
-      });
-    }
-    return res.status(400).json({
-      status: false,
-      message: 'No batch data found',
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
-routes.delete('/short-codes/:code', authHandler, async (req, res) => {
-  try {
-    const { code } = req.params;
-    if (!code) {
+        return res.status(statusCode).json({
+          status: statusCode === 201,
+          data: results,
+        });
+      }
       return res.status(400).json({
         status: false,
-        message: 'Code is required',
+        message: 'No batch data found',
       });
-    }
-    const user = (req as any).user;
-    const result = await prisma.urlShortener.updateMany({
-      where: {
-        shortCode: code as string,
-        userId: user.id,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-    if (result.count === 0) {
-      return res.status(403).json({
+    } catch (e) {
+      return res.status(500).json({
         status: false,
-        message: 'Forbidden action',
+        error: e,
       });
     }
-    return res.status(200).json({
-      status: true,
-    });
-  } catch (e) {
-    return res.status(500).json({
-      status: false,
-      error: e,
-    });
-  }
-});
+  },
+);
+routes.delete(
+  '/short-codes/:code',
+  timeMiddlewareHandler('auth', authHandler),
+  async (req, res) => {
+    try {
+      const { code } = req.params;
+      if (!code) {
+        return res.status(400).json({
+          status: false,
+          message: 'Code is required',
+        });
+      }
+      const user = (req as any).user;
+      const result = await prisma.urlShortener.updateMany({
+        where: {
+          shortCode: code as string,
+          userId: user.id,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+      if (result.count === 0) {
+        return res.status(403).json({
+          status: false,
+          message: 'Forbidden action',
+        });
+      }
+      return res.status(200).json({
+        status: true,
+      });
+    } catch (e) {
+      return res.status(500).json({
+        status: false,
+        error: e,
+      });
+    }
+  },
+);
 
 // redirect endpoint
 routes.get('/redirect', async (req, res) => {
