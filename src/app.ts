@@ -18,6 +18,8 @@ import {
   tierHandler,
   timeMiddlewareHandler,
 } from './utils/middlewares';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger';
 const bcrypt = require('bcrypt');
 
 dotenv.config();
@@ -32,6 +34,8 @@ app.use(
 );
 app.use(express.json());
 app.set('trust proxy', true);
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // logger middleware
 app.use(timeMiddlewareHandler('logger', loggerHandler));
 app.use(timeMiddlewareHandler('api-request-time', apiRequestTimeHandler));
