@@ -11,7 +11,7 @@
           "v": "17",
           "name": "Check whether the server is running",
           "method": "GET",
-          "endpoint": "http://localhost:3000/api/v1/ping",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/ping",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -32,7 +32,7 @@
                 "v": "6",
                 "name": "Check whether the server is running",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/ping",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/ping",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -62,7 +62,7 @@
           "v": "17",
           "name": "Check server and database connectivity",
           "method": "GET",
-          "endpoint": "http://localhost:3000/api/v1/health",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/health",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -83,7 +83,7 @@
                 "v": "6",
                 "name": "Check server and database connectivity",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/health",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/health",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -112,7 +112,7 @@
                 "v": "6",
                 "name": "Check server and database connectivity",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/health",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/health",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -158,7 +158,7 @@
           "v": "17",
           "name": "Create a user and API key",
           "method": "POST",
-          "endpoint": "http://localhost:3000/api/v1/users",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -179,7 +179,7 @@
                 "v": "6",
                 "name": "Create a user and API key",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/users",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -208,7 +208,7 @@
                 "v": "6",
                 "name": "Create a user and API key",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/users",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -237,7 +237,7 @@
                 "v": "6",
                 "name": "Create a user and API key",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/users",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -267,7 +267,7 @@
           "v": "17",
           "name": "Soft-delete the authenticated user",
           "method": "DELETE",
-          "endpoint": "http://localhost:3000/api/v1/users",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -291,7 +291,7 @@
                 "v": "6",
                 "name": "Soft-delete the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/users",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -323,7 +323,7 @@
                 "v": "6",
                 "name": "Soft-delete the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/users",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -355,7 +355,7 @@
                 "v": "6",
                 "name": "Soft-delete the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/users",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -388,7 +388,7 @@
           "v": "17",
           "name": "List the authenticated user's short codes",
           "method": "GET",
-          "endpoint": "http://localhost:3000/api/v1/users/short-list",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -412,7 +412,7 @@
                 "v": "6",
                 "name": "List the authenticated user's short codes",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/users/short-list",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -444,7 +444,7 @@
                 "v": "6",
                 "name": "List the authenticated user's short codes",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/users/short-list",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -476,7 +476,7 @@
                 "v": "6",
                 "name": "List the authenticated user's short codes",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/users/short-list",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -525,7 +525,7 @@
           "v": "17",
           "name": "Create a short code",
           "method": "POST",
-          "endpoint": "http://localhost:3000/api/v1/shorten",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -549,7 +549,7 @@
                 "v": "6",
                 "name": "Create a short code",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -581,7 +581,7 @@
                 "v": "6",
                 "name": "Create a short code",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -613,7 +613,7 @@
                 "v": "6",
                 "name": "Create a short code",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -645,7 +645,7 @@
                 "v": "6",
                 "name": "Create a short code",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -677,7 +677,7 @@
                 "v": "6",
                 "name": "Create a short code",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -710,7 +710,7 @@
           "v": "17",
           "name": "Edit a short code expiry date or password",
           "method": "PATCH",
-          "endpoint": "http://localhost:3000/api/v1/shorten",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -734,7 +734,7 @@
                 "v": "6",
                 "name": "Edit a short code expiry date or password",
                 "method": "PATCH",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -766,7 +766,7 @@
                 "v": "6",
                 "name": "Edit a short code expiry date or password",
                 "method": "PATCH",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -798,7 +798,7 @@
                 "v": "6",
                 "name": "Edit a short code expiry date or password",
                 "method": "PATCH",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -830,7 +830,7 @@
                 "v": "6",
                 "name": "Edit a short code expiry date or password",
                 "method": "PATCH",
-                "endpoint": "http://localhost:3000/api/v1/shorten",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -863,7 +863,7 @@
           "v": "17",
           "name": "Bulk create short codes for enterprise users",
           "method": "POST",
-          "endpoint": "http://localhost:3000/api/v1/shorten/batch",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -887,7 +887,7 @@
                 "v": "6",
                 "name": "Bulk create short codes for enterprise users",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten/batch",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -919,7 +919,7 @@
                 "v": "6",
                 "name": "Bulk create short codes for enterprise users",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten/batch",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -951,7 +951,7 @@
                 "v": "6",
                 "name": "Bulk create short codes for enterprise users",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten/batch",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -983,7 +983,7 @@
                 "v": "6",
                 "name": "Bulk create short codes for enterprise users",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten/batch",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1015,7 +1015,7 @@
                 "v": "6",
                 "name": "Bulk create short codes for enterprise users",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten/batch",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1047,7 +1047,7 @@
                 "v": "6",
                 "name": "Bulk create short codes for enterprise users",
                 "method": "POST",
-                "endpoint": "http://localhost:3000/api/v1/shorten/batch",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1080,7 +1080,7 @@
           "v": "17",
           "name": "Soft-delete a short code owned by the authenticated user",
           "method": "DELETE",
-          "endpoint": "http://localhost:3000/api/v1/short-codes/<<code>>",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1110,7 +1110,7 @@
                 "v": "6",
                 "name": "Soft-delete a short code owned by the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/short-codes/<<code>>",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1148,7 +1148,7 @@
                 "v": "6",
                 "name": "Soft-delete a short code owned by the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/short-codes/<<code>>",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1186,7 +1186,7 @@
                 "v": "6",
                 "name": "Soft-delete a short code owned by the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/short-codes/<<code>>",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1224,7 +1224,7 @@
                 "v": "6",
                 "name": "Soft-delete a short code owned by the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/short-codes/<<code>>",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1262,7 +1262,7 @@
                 "v": "6",
                 "name": "Soft-delete a short code owned by the authenticated user",
                 "method": "DELETE",
-                "endpoint": "http://localhost:3000/api/v1/short-codes/<<code>>",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1317,7 +1317,7 @@
           "v": "17",
           "name": "Redirect to the original URL for a short code",
           "method": "GET",
-          "endpoint": "http://localhost:3000/api/v1/redirect",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
           "params": [
             {
               "key": "code",
@@ -1351,7 +1351,7 @@
                 "v": "6",
                 "name": "Redirect to the original URL for a short code",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/redirect",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
                 "headers": [],
                 "params": [
                   {
@@ -1393,7 +1393,7 @@
                 "v": "6",
                 "name": "Redirect to the original URL for a short code",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/redirect",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
                 "headers": [],
                 "params": [
                   {
@@ -1435,7 +1435,7 @@
                 "v": "6",
                 "name": "Redirect to the original URL for a short code",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/redirect",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
                 "headers": [],
                 "params": [
                   {
@@ -1477,7 +1477,7 @@
                 "v": "6",
                 "name": "Redirect to the original URL for a short code",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/redirect",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
                 "headers": [],
                 "params": [
                   {
@@ -1536,7 +1536,7 @@
           "v": "17",
           "name": "Return URL analytics collections",
           "method": "GET",
-          "endpoint": "http://localhost:3000/api/v1/analytics",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/analytics",
           "params": [],
           "headers": [],
           "preRequestScript": "",
@@ -1557,7 +1557,7 @@
                 "v": "6",
                 "name": "Return URL analytics collections",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/analytics",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/analytics",
                 "headers": [],
                 "params": [],
                 "body": {
@@ -1586,7 +1586,7 @@
                 "v": "6",
                 "name": "Return URL analytics collections",
                 "method": "GET",
-                "endpoint": "http://localhost:3000/api/v1/analytics",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/analytics",
                 "headers": [],
                 "params": [],
                 "body": {

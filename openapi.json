@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:3000/api/v1",
+      "url": "https://vysonm1-production.up.railway.app/api/v1",
       "description": "Local development server"
     }
   ],
@@ -35,10 +35,7 @@
       },
       "UserCreateRequest": {
         "type": "object",
-        "required": [
-          "email",
-          "name"
-        ],
+        "required": ["email", "name"],
         "properties": {
           "email": {
             "type": "string",
@@ -75,9 +72,7 @@
       },
       "ShortenRequest": {
         "type": "object",
-        "required": [
-          "originalUrl"
-        ],
+        "required": ["originalUrl"],
         "properties": {
           "originalUrl": {
             "type": "string",
@@ -163,9 +158,7 @@
       },
       "PatchShortenRequest": {
         "type": "object",
-        "required": [
-          "code"
-        ],
+        "required": ["code"],
         "properties": {
           "code": {
             "type": "string",
@@ -193,9 +186,7 @@
   "paths": {
     "/ping": {
       "get": {
-        "tags": [
-          "Health"
-        ],
+        "tags": ["Health"],
         "summary": "Check whether the server is running",
         "responses": {
           "200": {
@@ -206,9 +197,7 @@
     },
     "/health": {
       "get": {
-        "tags": [
-          "Health"
-        ],
+        "tags": ["Health"],
         "summary": "Check server and database connectivity",
         "responses": {
           "200": {
@@ -222,9 +211,7 @@
     },
     "/users": {
       "post": {
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "summary": "Create a user and API key",
         "requestBody": {
           "required": true,
@@ -256,9 +243,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "summary": "Soft-delete the authenticated user",
         "security": [
           {
@@ -280,9 +265,7 @@
     },
     "/users/short-list": {
       "get": {
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "summary": "List the authenticated user's short codes",
         "security": [
           {
@@ -344,9 +327,7 @@
     },
     "/shorten": {
       "post": {
-        "tags": [
-          "Short Codes"
-        ],
+        "tags": ["Short Codes"],
         "summary": "Create a short code",
         "security": [
           {
@@ -389,9 +370,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "Short Codes"
-        ],
+        "tags": ["Short Codes"],
         "summary": "Edit a short code expiry date or password",
         "security": [
           {
@@ -426,9 +405,7 @@
     },
     "/shorten/batch": {
       "post": {
-        "tags": [
-          "Short Codes"
-        ],
+        "tags": ["Short Codes"],
         "summary": "Bulk create short codes for enterprise users",
         "security": [
           {
@@ -469,9 +446,7 @@
     },
     "/short-codes/{code}": {
       "delete": {
-        "tags": [
-          "Short Codes"
-        ],
+        "tags": ["Short Codes"],
         "summary": "Soft-delete a short code owned by the authenticated user",
         "security": [
           {
@@ -510,9 +485,7 @@
     },
     "/redirect": {
       "get": {
-        "tags": [
-          "Redirect"
-        ],
+        "tags": ["Redirect"],
         "summary": "Redirect to the original URL for a short code",
         "parameters": [
           {
@@ -552,9 +525,7 @@
     },
     "/analytics": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "Return URL analytics collections",
         "responses": {
           "200": {
