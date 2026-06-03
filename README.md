@@ -6,19 +6,19 @@ A minimal URL shortener service built with TypeScript, Express, and PostgreSQL.
 
 The API endpoint `/api/v1`.
 
-| Method | Endpoint                       | Description                                                 |
-| ------ | ------------------------------ | ----------------------------------------------------------- |
-| `POST` | `/api/v1/users`                | Creates a user and returns an API key.                      |
-| `DELETE` | `/api/v1/users`              | Soft-deletes the user for the provided API key.             |
-| `GET`  | `/api/v1/users/short-list`     | Lists the authenticated user's shortened URLs.              |
-| `POST` | `/api/v1/shorten`              | Creates a short code for the authenticated user.            |
-| `PATCH` | `/api/v1/shorten`             | Edits expiry date/password for a user's short code.         |
-| `POST` | `/api/v1/shorten/batch`        | Bulk creates short codes for enterprise users.              |
-| `GET`  | `/api/v1/redirect?code={code}` | Redirects to the original URL for a short code.             |
-| `DELETE` | `/api/v1/short-codes/{code}` | Soft-deletes a short code owned by the authenticated user.  |
-| `GET`  | `/api/v1/analytics`            | Returns basic URL analytics collections.                    |
-| `GET`  | `/api/v1/ping`                 | Checks whether the server is running.                       |
-| `GET`  | `/api/v1/health`               | Checks server and database connectivity.                    |
+| Method   | Endpoint                       | Description                                                |
+| -------- | ------------------------------ | ---------------------------------------------------------- |
+| `POST`   | `/api/v1/users`                | Creates a user and returns an API key.                     |
+| `DELETE` | `/api/v1/users`                | Soft-deletes the user for the provided API key.            |
+| `GET`    | `/api/v1/users/short-list`     | Lists the authenticated user's shortened URLs.             |
+| `POST`   | `/api/v1/shorten`              | Creates a short code for the authenticated user.           |
+| `PATCH`  | `/api/v1/shorten`              | Edits expiry date/password for a user's short code.        |
+| `POST`   | `/api/v1/shorten/batch`        | Bulk creates short codes for enterprise users.             |
+| `GET`    | `/api/v1/redirect?code={code}` | Redirects to the original URL for a short code.            |
+| `DELETE` | `/api/v1/short-codes/{code}`   | Soft-deletes a short code owned by the authenticated user. |
+| `GET`    | `/api/v1/analytics`            | Returns basic URL analytics collections.                   |
+| `GET`    | `/api/v1/ping`                 | Checks whether the server is running.                      |
+| `GET`    | `/api/v1/health`               | Checks server and database connectivity.                   |
 
 ## Tech Stack
 
@@ -86,6 +86,23 @@ The API endpoint `/api/v1`.
    ```
 
    The server runs at `http://localhost:3000`.
+
+## Test user
+
+### user 1
+
+email : jackdoe@gmail.com
+apiKey : 6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015
+
+### user 2
+
+email : jane@gmail.com
+apiKey : e1132130f281347c843ed26d99e600721e523dfbb66d00fcc82d4d13e4affdbc
+
+### user 3
+
+email : john@gmail.com
+apiKey : 1d2bdb586a2f5c06d5fb65473757c7c4ef20c827adb095f4ea1c94e705ad1b73
 
 ## Database Migrations
 
