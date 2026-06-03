@@ -1,0 +1,1637 @@
+{
+  "v": 12,
+  "name": "URL Shortener API",
+  "folders": [
+    {
+      "v": 12,
+      "name": "Health",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "Check whether the server is running",
+          "method": "GET",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/ping",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "none",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {
+            "Server is running": {
+              "name": "Server is running",
+              "originalRequest": {
+                "v": "6",
+                "name": "Check whether the server is running",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/ping",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "OK",
+              "code": 200,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "Check server and database connectivity",
+          "method": "GET",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/health",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "none",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {
+            "Database is connected": {
+              "name": "Database is connected",
+              "originalRequest": {
+                "v": "6",
+                "name": "Check server and database connectivity",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/health",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "OK",
+              "code": 200,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Database is unavailable": {
+              "name": "Database is unavailable",
+              "originalRequest": {
+                "v": "6",
+                "name": "Check server and database connectivity",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/health",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null,
+      "preRequestScript": "",
+      "testScript": ""
+    },
+    {
+      "v": 12,
+      "name": "Users",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "Create a user and API key",
+          "method": "POST",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "none",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"email\": \"user@example.com\",\n  \"name\": \"Example User\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {
+            "User created": {
+              "name": "User created",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a user and API key",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"email\": \"user@example.com\",\n  \"name\": \"Example User\"\n}"
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Created",
+              "code": 201,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"data\": {\n    \"id\": 1,\n    \"apiKey\": \"generated-api-key\"\n  }\n}"
+            },
+            "Invalid user input": {
+              "name": "Invalid user input",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a user and API key",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"email\": \"user@example.com\",\n  \"name\": \"Example User\"\n}"
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a user and API key",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"email\": \"user@example.com\",\n  \"name\": \"Example User\"\n}"
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "Soft-delete the authenticated user",
+          "method": "DELETE",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "api-key",
+            "key": "x-api-key",
+            "value": "",
+            "addTo": "HEADERS",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {
+            "User deleted": {
+              "name": "User deleted",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "OK",
+              "code": 200,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Missing or invalid API key": {
+              "name": "Missing or invalid API key",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "List the authenticated user's short codes",
+          "method": "GET",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "api-key",
+            "key": "x-api-key",
+            "value": "",
+            "addTo": "HEADERS",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {
+            "Short codes returned": {
+              "name": "Short codes returned",
+              "originalRequest": {
+                "v": "6",
+                "name": "List the authenticated user's short codes",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "OK",
+              "code": 200,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"data\": {\n    \"id\": 1,\n    \"email\": \"user@example.com\",\n    \"name\": \"Example User\",\n    \"tier\": \"HOBBY\",\n    \"shortens\": [\n      {\n        \"id\": 1,\n        \"originalUrl\": \"https://example.com\",\n        \"shortCode\": \"abc123\",\n        \"clicks\": 12,\n        \"lastAccessedAt\": \"string\",\n        \"expiryDate\": \"string\"\n      }\n    ]\n  }\n}"
+            },
+            "Missing or invalid API key": {
+              "name": "Missing or invalid API key",
+              "originalRequest": {
+                "v": "6",
+                "name": "List the authenticated user's short codes",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "List the authenticated user's short codes",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/users/short-list",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null,
+      "preRequestScript": "",
+      "testScript": ""
+    },
+    {
+      "v": 12,
+      "name": "Short Codes",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "Create a short code",
+          "method": "POST",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "api-key",
+            "key": "x-api-key",
+            "value": "",
+            "addTo": "HEADERS",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"originalUrl\": \"https://example.com\",\n  \"code\": \"custom-code\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"secret\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {
+            "Short code created": {
+              "name": "Short code created",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a short code",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"originalUrl\": \"https://example.com\",\n  \"code\": \"custom-code\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Created",
+              "code": 201,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"data\": {\n    \"id\": 1,\n    \"originalUrl\": \"https://example.com\",\n    \"shortCode\": \"abc123\",\n    \"expiryDate\": \"string\"\n  }\n}"
+            },
+            "Invalid URL, expiry date, or request body": {
+              "name": "Invalid URL, expiry date, or request body",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a short code",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"originalUrl\": \"https://example.com\",\n  \"code\": \"custom-code\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Missing or invalid API key": {
+              "name": "Missing or invalid API key",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a short code",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"originalUrl\": \"https://example.com\",\n  \"code\": \"custom-code\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Custom short code already exists": {
+              "name": "Custom short code already exists",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a short code",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"originalUrl\": \"https://example.com\",\n  \"code\": \"custom-code\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Conflict",
+              "code": 409,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "Create a short code",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"originalUrl\": \"https://example.com\",\n  \"code\": \"custom-code\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "Edit a short code expiry date or password",
+          "method": "PATCH",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "api-key",
+            "key": "x-api-key",
+            "value": "",
+            "addTo": "HEADERS",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"code\": \"abc123\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"new-secret\"\n}"
+          },
+          "requestVariables": [],
+          "responses": {
+            "Short code updated": {
+              "name": "Short code updated",
+              "originalRequest": {
+                "v": "6",
+                "name": "Edit a short code expiry date or password",
+                "method": "PATCH",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"code\": \"abc123\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"new-secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "OK",
+              "code": 200,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Missing or invalid API key": {
+              "name": "Missing or invalid API key",
+              "originalRequest": {
+                "v": "6",
+                "name": "Edit a short code expiry date or password",
+                "method": "PATCH",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"code\": \"abc123\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"new-secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Authenticated user does not own this short code": {
+              "name": "Authenticated user does not own this short code",
+              "originalRequest": {
+                "v": "6",
+                "name": "Edit a short code expiry date or password",
+                "method": "PATCH",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"code\": \"abc123\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"new-secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "Edit a short code expiry date or password",
+                "method": "PATCH",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "{\n  \"code\": \"abc123\",\n  \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n  \"password\": \"new-secret\"\n}"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "Bulk create short codes for enterprise users",
+          "method": "POST",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "api-key",
+            "key": "x-api-key",
+            "value": "",
+            "addTo": "HEADERS",
+            "authActive": true
+          },
+          "body": {
+            "contentType": "application/json",
+            "body": "[\n  {\n    \"originalUrl\": \"https://example.com\",\n    \"code\": \"custom-code\",\n    \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n    \"password\": \"secret\"\n  }\n]"
+          },
+          "requestVariables": [],
+          "responses": {
+            "All short codes created": {
+              "name": "All short codes created",
+              "originalRequest": {
+                "v": "6",
+                "name": "Bulk create short codes for enterprise users",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "[\n  {\n    \"originalUrl\": \"https://example.com\",\n    \"code\": \"custom-code\",\n    \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n    \"password\": \"secret\"\n  }\n]"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Created",
+              "code": 201,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Some items failed": {
+              "name": "Some items failed",
+              "originalRequest": {
+                "v": "6",
+                "name": "Bulk create short codes for enterprise users",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "[\n  {\n    \"originalUrl\": \"https://example.com\",\n    \"code\": \"custom-code\",\n    \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n    \"password\": \"secret\"\n  }\n]"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Multi-Status",
+              "code": 207,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Invalid or empty batch request": {
+              "name": "Invalid or empty batch request",
+              "originalRequest": {
+                "v": "6",
+                "name": "Bulk create short codes for enterprise users",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "[\n  {\n    \"originalUrl\": \"https://example.com\",\n    \"code\": \"custom-code\",\n    \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n    \"password\": \"secret\"\n  }\n]"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Missing or invalid API key": {
+              "name": "Missing or invalid API key",
+              "originalRequest": {
+                "v": "6",
+                "name": "Bulk create short codes for enterprise users",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "[\n  {\n    \"originalUrl\": \"https://example.com\",\n    \"code\": \"custom-code\",\n    \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n    \"password\": \"secret\"\n  }\n]"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "User is not on the enterprise tier": {
+              "name": "User is not on the enterprise tier",
+              "originalRequest": {
+                "v": "6",
+                "name": "Bulk create short codes for enterprise users",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "[\n  {\n    \"originalUrl\": \"https://example.com\",\n    \"code\": \"custom-code\",\n    \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n    \"password\": \"secret\"\n  }\n]"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "Bulk create short codes for enterprise users",
+                "method": "POST",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/shorten/batch",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": "application/json",
+                  "body": "[\n  {\n    \"originalUrl\": \"https://example.com\",\n    \"code\": \"custom-code\",\n    \"expiryDate\": \"2026-12-31T23:59:59.000Z\",\n    \"password\": \"secret\"\n  }\n]"
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        },
+        {
+          "v": "17",
+          "name": "Soft-delete a short code owned by the authenticated user",
+          "method": "DELETE",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "api-key",
+            "key": "x-api-key",
+            "value": "",
+            "addTo": "HEADERS",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [
+            {
+              "key": "code",
+              "value": "",
+              "active": true
+            }
+          ],
+          "responses": {
+            "Short code deleted": {
+              "name": "Short code deleted",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete a short code owned by the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true
+                  }
+                ]
+              },
+              "status": "OK",
+              "code": 200,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Code is required": {
+              "name": "Code is required",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete a short code owned by the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true
+                  }
+                ]
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Missing or invalid API key": {
+              "name": "Missing or invalid API key",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete a short code owned by the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true
+                  }
+                ]
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Authenticated user does not own this short code": {
+              "name": "Authenticated user does not own this short code",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete a short code owned by the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true
+                  }
+                ]
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "Soft-delete a short code owned by the authenticated user",
+                "method": "DELETE",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/short-codes/<<code>>",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "api-key",
+                  "key": "x-api-key",
+                  "value": "",
+                  "addTo": "HEADERS",
+                  "authActive": true
+                },
+                "requestVariables": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true
+                  }
+                ]
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null,
+      "preRequestScript": "",
+      "testScript": ""
+    },
+    {
+      "v": 12,
+      "name": "Redirect",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "Redirect to the original URL for a short code",
+          "method": "GET",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
+          "params": [
+            {
+              "key": "code",
+              "value": "",
+              "active": true,
+              "description": ""
+            },
+            {
+              "key": "password",
+              "value": "",
+              "active": true,
+              "description": ""
+            }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "none",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {
+            "Redirects to the original URL": {
+              "name": "Redirects to the original URL",
+              "originalRequest": {
+                "v": "6",
+                "name": "Redirect to the original URL for a short code",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
+                "headers": [],
+                "params": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  },
+                  {
+                    "key": "password",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Found",
+              "code": 302,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Code is required": {
+              "name": "Code is required",
+              "originalRequest": {
+                "v": "6",
+                "name": "Redirect to the original URL for a short code",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
+                "headers": [],
+                "params": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  },
+                  {
+                    "key": "password",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Password is missing or invalid": {
+              "name": "Password is missing or invalid",
+              "originalRequest": {
+                "v": "6",
+                "name": "Redirect to the original URL for a short code",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
+                "headers": [],
+                "params": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  },
+                  {
+                    "key": "password",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "URL not found or expired": {
+              "name": "URL not found or expired",
+              "originalRequest": {
+                "v": "6",
+                "name": "Redirect to the original URL for a short code",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/redirect",
+                "headers": [],
+                "params": [
+                  {
+                    "key": "code",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  },
+                  {
+                    "key": "password",
+                    "value": "",
+                    "active": true,
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Not Found",
+              "code": 404,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null,
+      "preRequestScript": "",
+      "testScript": ""
+    },
+    {
+      "v": 12,
+      "name": "Analytics",
+      "folders": [],
+      "requests": [
+        {
+          "v": "17",
+          "name": "Return URL analytics collections",
+          "method": "GET",
+          "endpoint": "https://vysonm1-production.up.railway.app/api/v1/analytics",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": {
+            "authType": "none",
+            "authActive": true
+          },
+          "body": {
+            "contentType": null,
+            "body": null
+          },
+          "requestVariables": [],
+          "responses": {
+            "Analytics returned": {
+              "name": "Analytics returned",
+              "originalRequest": {
+                "v": "6",
+                "name": "Return URL analytics collections",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/analytics",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "OK",
+              "code": 200,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            },
+            "Server error": {
+              "name": "Server error",
+              "originalRequest": {
+                "v": "6",
+                "name": "Return URL analytics collections",
+                "method": "GET",
+                "endpoint": "https://vysonm1-production.up.railway.app/api/v1/analytics",
+                "headers": [],
+                "params": [],
+                "body": {
+                  "contentType": null,
+                  "body": null
+                },
+                "auth": {
+                  "authType": "none",
+                  "authActive": true
+                },
+                "requestVariables": []
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "headers": [
+                {
+                  "key": "content-type",
+                  "value": "application/json"
+                }
+              ],
+              "body": ""
+            }
+          },
+          "description": null
+        }
+      ],
+      "auth": {
+        "authType": "inherit",
+        "authActive": true
+      },
+      "headers": [],
+      "variables": [],
+      "description": null,
+      "preRequestScript": "",
+      "testScript": ""
+    }
+  ],
+  "requests": [],
+  "auth": {
+    "authType": "inherit",
+    "authActive": true
+  },
+  "headers": [],
+  "variables": [],
+  "description": "URL Shortener API Documentation",
+  "preRequestScript": "",
+  "testScript": ""
+}

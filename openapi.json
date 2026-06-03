@@ -1,0 +1,542 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "URL Shortener API",
+    "version": "1.0.0",
+    "description": "URL Shortener API Documentation"
+  },
+  "servers": [
+    {
+      "url": "https://vysonm1-production.up.railway.app/api/v1",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Unauthorized access"
+          }
+        }
+      },
+      "UserCreateRequest": {
+        "type": "object",
+        "required": ["email", "name"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "name": {
+            "type": "string",
+            "example": "Example User"
+          }
+        }
+      },
+      "UserCreateResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 1
+              },
+              "apiKey": {
+                "type": "string",
+                "example": "generated-api-key"
+              }
+            }
+          }
+        }
+      },
+      "ShortenRequest": {
+        "type": "object",
+        "required": ["originalUrl"],
+        "properties": {
+          "originalUrl": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://example.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "custom-code"
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-12-31T23:59:59.000Z"
+          },
+          "password": {
+            "type": "string",
+            "example": "secret"
+          }
+        }
+      },
+      "ShortenResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 1
+              },
+              "originalUrl": {
+                "type": "string",
+                "example": "https://example.com"
+              },
+              "shortCode": {
+                "type": "string",
+                "example": "abc123"
+              },
+              "expiryDate": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "ShortCode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "originalUrl": {
+            "type": "string",
+            "example": "https://example.com"
+          },
+          "shortCode": {
+            "type": "string",
+            "example": "abc123"
+          },
+          "clicks": {
+            "type": "integer",
+            "example": 12
+          },
+          "lastAccessedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "expiryDate": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        }
+      },
+      "PatchShortenRequest": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "abc123"
+          },
+          "expiryDate": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-12-31T23:59:59.000Z"
+          },
+          "password": {
+            "type": "string",
+            "example": "new-secret"
+          }
+        }
+      },
+      "BatchShortenRequest": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ShortenRequest"
+        }
+      }
+    }
+  },
+  "paths": {
+    "/ping": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Check whether the server is running",
+        "responses": {
+          "200": {
+            "description": "Server is running"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Check server and database connectivity",
+        "responses": {
+          "200": {
+            "description": "Database is connected"
+          },
+          "503": {
+            "description": "Database is unavailable"
+          }
+        }
+      }
+    },
+    "/users": {
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create a user and API key",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserCreateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid user input"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Soft-delete the authenticated user",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted"
+          },
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/users/short-list": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List the authenticated user's short codes",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Short codes returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "user@example.com"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Example User"
+                        },
+                        "tier": {
+                          "type": "string",
+                          "example": "HOBBY"
+                        },
+                        "shortens": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ShortCode"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/shorten": {
+      "post": {
+        "tags": ["Short Codes"],
+        "summary": "Create a short code",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Short code created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid URL, expiry date, or request body"
+          },
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "409": {
+            "description": "Custom short code already exists"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Short Codes"],
+        "summary": "Edit a short code expiry date or password",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchShortenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Short code updated"
+          },
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "403": {
+            "description": "Authenticated user does not own this short code"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/shorten/batch": {
+      "post": {
+        "tags": ["Short Codes"],
+        "summary": "Bulk create short codes for enterprise users",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchShortenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "All short codes created"
+          },
+          "207": {
+            "description": "Some items failed"
+          },
+          "400": {
+            "description": "Invalid or empty batch request"
+          },
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "403": {
+            "description": "User is not on the enterprise tier"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/short-codes/{code}": {
+      "delete": {
+        "tags": ["Short Codes"],
+        "summary": "Soft-delete a short code owned by the authenticated user",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Short code deleted"
+          },
+          "400": {
+            "description": "Code is required"
+          },
+          "401": {
+            "description": "Missing or invalid API key"
+          },
+          "403": {
+            "description": "Authenticated user does not own this short code"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/redirect": {
+      "get": {
+        "tags": ["Redirect"],
+        "summary": "Redirect to the original URL for a short code",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "abc123"
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "secret"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirects to the original URL"
+          },
+          "400": {
+            "description": "Code is required"
+          },
+          "401": {
+            "description": "Password is missing or invalid"
+          },
+          "404": {
+            "description": "URL not found or expired"
+          }
+        }
+      }
+    },
+    "/analytics": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Return URL analytics collections",
+        "responses": {
+          "200": {
+            "description": "Analytics returned"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}
