@@ -1,5 +1,5 @@
 import request from 'supertest';
-import app from '../app';
+import app, { memCache } from '../app';
 import { describe, it, expect } from 'bun:test';
 import { prisma } from '../lib/prisma';
 import { Tier } from '../utils/enums';
@@ -130,6 +130,40 @@ describe('URL Shortener integration test', () => {
       .set('x-api-key', apiKey);
     expect(res.statusCode).toBe(403);
   });
+});
+
+describe('Cache URL Redirect', () => {
+  it(
+    'should use cache',
+    async () => {
+      const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
+      const r = await request(app)
+        .post('/api/v1/shorten')
+        .send({
+          originalUrl,
+        })
+        .set('x-api-key', apiKey);
+
+      expect(r.statusCode).toBe(201);
+      const code = r.body.data.shortCode;
+      const redirectResponse1 = await request(app).get(
+        `/api/v1/redirect?code=${code}`,
+      );
+      const redirectResponse2 = await request(app).get(
+        `/api/v1/redirect?code=${code}`,
+      );
+
+      expect(redirectResponse1.statusCode).toBe(302);
+      expect(redirectResponse2.statusCode).toBe(302);
+      expect(memCache[code]).toBe(originalUrl);
+
+      const deleteResponse = await request(app)
+        .delete(`/api/v1/short-codes/${code}`)
+        .set('x-api-key', apiKey);
+      expect(deleteResponse.statusCode).toBe(200);
+    },
+    integrationTimeout,
+  );
 });
 
 // [Q8] What happens when you try to fetch a short code that doesn’t exist? Find out which http status code would suit best here. Add this as a test as well.

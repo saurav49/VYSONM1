@@ -22,6 +22,8 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 const bcrypt = require('bcrypt');
 
+export const memCache: Record<string, string> = {};
+
 dotenv.config();
 
 const routes = Router();
@@ -361,6 +363,9 @@ routes.get('/redirect', async (req, res) => {
       message: 'Code is required',
     });
   }
+  if (memCache[code as string]) {
+    return res.redirect(memCache[code as string]);
+  }
   const result = await prisma.urlShortener.findUnique({
     where: {
       shortCode: code as string,
@@ -411,6 +416,7 @@ routes.get('/redirect', async (req, res) => {
       lastAccessedAt: new Date(),
     },
   });
+  memCache[code as string] = originalUrl;
   return res.redirect(originalUrl);
 });
 
