@@ -23,6 +23,8 @@ import { swaggerSpec } from './swagger';
 const bcrypt = require('bcrypt');
 
 export const memCache: Record<string, string> = {};
+let cacheHit = 0;
+let cacheMiss = 0;
 
 dotenv.config();
 
@@ -364,6 +366,7 @@ routes.get('/redirect', async (req, res) => {
     });
   }
   if (memCache[code as string]) {
+    cacheHit += 1;
     return res.redirect(memCache[code as string]);
   }
   const result = await prisma.urlShortener.findUnique({
@@ -417,11 +420,13 @@ routes.get('/redirect', async (req, res) => {
     },
   });
   memCache[code as string] = originalUrl;
-  return res.redirect(originalUrl);
+  cacheMiss += 1;
+  res.set('Cache-Control', 'public, max-age=86400, immutable');
+  return res.redirect(308, originalUrl);
 });
 
 // benchmark endpoint added to test the /shorten POST request
-routes.post('/shorten-benchmark', async (req, res) => {
+routes.post('/shorten-benchmark', async (_req, res) => {
   let shortCode = '';
   shortCode = randomBytes(8).toString('base64url').slice(0, 10);
   const originalUrl = `https://terminaltrove.com/oha/${Date.now()}-${shortCode}`;
@@ -437,7 +442,7 @@ routes.post('/shorten-benchmark', async (req, res) => {
 });
 
 // analytics endpoint
-routes.get('/analytics', async (req, res) => {
+routes.get('/analytics', async (_req, res) => {
   try {
     const tenLatestUrlShortened = await prisma.urlShortener.findMany({
       where: { deletedAt: null },
@@ -474,5 +479,16 @@ routes.get('/analytics', async (req, res) => {
     console.error(e);
     throw e;
   }
+});
+
+routes.get('/cache-stats', async (_req, res) => {
+  return res.status(200).json({
+    status: true,
+    data: {
+      cacheHit,
+      cacheMiss,
+      hitRatio: cacheHit / (cacheMiss + cacheHit),
+    },
+  });
 });
 export default app;
