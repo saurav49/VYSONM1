@@ -5,6 +5,8 @@ import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
 import {
+  deleteCache,
+  getCache,
   handleCreateUrlShortener,
   hashPassword,
   isValidEmail,
@@ -22,7 +24,6 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 const bcrypt = require('bcrypt');
 
-export const memCache: Record<string, string> = {};
 let cacheHit = 0;
 let cacheMiss = 0;
 
@@ -236,6 +237,7 @@ routes.patch(
           message: 'Forbidden action',
         });
       }
+      await deleteCache(code as string);
       return res.status(200).json({
         status: true,
         data: result,
@@ -343,6 +345,7 @@ routes.delete(
           message: 'Forbidden action',
         });
       }
+      await deleteCache(code as string);
       return res.status(200).json({
         status: true,
       });
@@ -365,9 +368,9 @@ routes.get('/redirect', async (req, res) => {
       message: 'Code is required',
     });
   }
-  if (memCache[code as string]) {
-    cacheHit += 1;
-    return res.redirect(memCache[code as string]);
+  const cachedValue = await getCache(code as string);
+  if (cachedValue) {
+    return res.redirect(cachedValue);
   }
   const result = await prisma.urlShortener.findUnique({
     where: {
@@ -419,10 +422,8 @@ routes.get('/redirect', async (req, res) => {
       lastAccessedAt: new Date(),
     },
   });
-  memCache[code as string] = originalUrl;
   cacheMiss += 1;
-  res.set('Cache-Control', 'public, max-age=86400, immutable');
-  return res.redirect(308, originalUrl);
+  return res.redirect(originalUrl);
 });
 
 // benchmark endpoint added to test the /shorten POST request

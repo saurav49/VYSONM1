@@ -1,8 +1,25 @@
 import { randomBytes } from 'node:crypto';
 import { prisma } from '../lib/prisma';
-import { Request, Response, NextFunction } from 'express';
+import { Request } from 'express';
+import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
 
+async function deleteCache(code: string) {
+  await redis.del(`shortCode:${code}`);
+}
+async function setCache({
+  code,
+  originalUrl,
+}: {
+  code: string;
+  originalUrl: string;
+}) {
+  const cachedKey = `shortCode:${code}`;
+  await redis.set(cachedKey, originalUrl, 'EX', 3600);
+}
+async function getCache(code: string) {
+  return await redis.get(`shortCode:${code}`);
+}
 const isValidEmail = (email: string) => {
   const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return regex.test(email);
@@ -91,6 +108,10 @@ const handleCreateUrlShortener = async ({
         password: hashedPassword,
       },
     });
+    setCache({
+      code: code as string,
+      originalUrl,
+    });
     return {
       statusCode: 201,
       body: {
@@ -120,4 +141,7 @@ export {
   isValidDateTime,
   handleCreateUrlShortener,
   hashPassword,
+  deleteCache,
+  setCache,
+  getCache,
 };

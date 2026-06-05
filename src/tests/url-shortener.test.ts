@@ -1,8 +1,9 @@
 import request from 'supertest';
-import app, { memCache } from '../app';
+import app from '../app';
 import { describe, it, expect } from 'bun:test';
 import { prisma } from '../lib/prisma';
 import { Tier } from '../utils/enums';
+import { getCache } from '../utils/util';
 
 const apiKey =
   '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
@@ -155,7 +156,8 @@ describe('Cache URL Redirect', () => {
 
       expect(redirectResponse1.statusCode).toBe(302);
       expect(redirectResponse2.statusCode).toBe(302);
-      expect(memCache[code]).toBe(originalUrl);
+      const cachedValue = await getCache(code);
+      expect(cachedValue).toBe(originalUrl);
 
       const deleteResponse = await request(app)
         .delete(`/api/v1/short-codes/${code}`)
