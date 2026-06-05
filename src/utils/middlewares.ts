@@ -118,7 +118,7 @@ function timeMiddlewareHandler(name: string, middleware: any): RequestHandler {
     function done(e?: any) {
       const endTime = new Date();
       const timeElapsed = endTime.getTime() - startTime.getTime();
-      console.log(`${name} took ${timeElapsed}ms`);
+      // console.log(`${name} took ${timeElapsed}ms`);
       next(e);
     }
 
@@ -128,7 +128,7 @@ function timeMiddlewareHandler(name: string, middleware: any): RequestHandler {
       console.error(e);
       const endTime = new Date();
       const timeElapsed = endTime.getTime() - startTime.getTime();
-      console.log(`${name} took ${timeElapsed}ms`);
+      // console.log(`${name} took ${timeElapsed}ms`);
       next(e);
     }
   };

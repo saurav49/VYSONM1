@@ -10,6 +10,7 @@ import {
   handleCreateUrlShortener,
   hashPassword,
   isValidEmail,
+  setCache,
 } from './utils/util';
 import {
   apiRequestTimeHandler,
@@ -221,6 +222,18 @@ routes.patch(
         hashedPassword = await hashPassword(password);
       }
       const user = (req as any).user;
+      const url = await prisma.urlShortener.findFirst({
+        where: {
+          shortCode: code,
+          userId: user.id,
+        },
+      });
+      if (!url) {
+        return res.status(404).json({
+          status: false,
+          message: 'Url not found',
+        });
+      }
       const result = await prisma.urlShortener.updateMany({
         where: {
           shortCode: code,
@@ -360,7 +373,6 @@ routes.delete(
 
 // redirect endpoint
 routes.get('/redirect', async (req, res) => {
-  const now = new Date().getTime();
   const { code, password } = req.query;
   if (!code) {
     return res.status(400).json({
@@ -372,6 +384,7 @@ routes.get('/redirect', async (req, res) => {
   if (cachedValue) {
     return res.redirect(cachedValue);
   }
+  const now = new Date().getTime();
   const result = await prisma.urlShortener.findUnique({
     where: {
       shortCode: code as string,
@@ -412,6 +425,9 @@ routes.get('/redirect', async (req, res) => {
       status: false,
       message: 'URL expired',
     });
+  }
+  if (!result?.password && !result?.expiryDate && code) {
+    await setCache({ code: result.shortCode as string, originalUrl });
   }
   await prisma.urlShortener.update({
     where: {

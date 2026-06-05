@@ -108,10 +108,9 @@ const handleCreateUrlShortener = async ({
         password: hashedPassword,
       },
     });
-    setCache({
-      code: code as string,
-      originalUrl,
-    });
+    if (!response?.password && !response?.expiryDate) {
+      await setCache({ code: response.shortCode as string, originalUrl });
+    }
     return {
       statusCode: 201,
       body: {
