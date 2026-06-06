@@ -8,6 +8,32 @@ This project follows semantic versioning:
 - `MINOR` for backward-compatible features.
 - `PATCH` for backward-compatible fixes.
 
+## [2.0.0] - 2026-06-06
+
+### Added
+
+- Added `/api/v2/users/short-list` with pagination support.
+- Added Swagger/OpenAPI documentation served from `/docs`.
+- Added `MIGRATION_GUIDE.md` for the authentication rollout.
+- Added Redis-backed short-code redirect caching.
+- Added cache statistics endpoint.
+- Added IP-based global rate limiting.
+- Added endpoint-specific rate limiting for `/shorten` and `/redirect`.
+- Added `FREE` user tier.
+- Added free-tier request limiting for authenticated routes.
+- Added Sentry instrumentation and a debug endpoint for Sentry testing.
+
+### Changed
+
+- Changed the default user tier to `FREE`.
+- Changed short-code update and delete flows to invalidate cache entries.
+- Changed redirect caching to avoid caching password-protected or expiring short codes.
+
+### Breaking Changes
+
+- New users now default to the `FREE` tier and are subject to free-tier rate limits.
+- A paginated v2 short-list response is available under `/api/v2/users/short-list`; clients depending on the unpaginated response should continue using `/api/v1/users/short-list`.
+
 ## [1.6.0]
 
 ### Added
