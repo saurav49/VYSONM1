@@ -164,14 +164,19 @@ v2Routes.get(
     try {
       const user = (req as any).user;
       const { page } = req.query;
-      console.log({ page });
       if (!page) {
-        return res.status(404).json({
+        return res.status(400).json({
           status: false,
           message: 'Page number required',
         });
       }
-      const pageNo = +page - 1;
+      let pageNo = +page;
+      if (!Number.isInteger(pageNo) || pageNo < 1) {
+        return res.status(400).json({
+          status: false,
+          message: 'Page no should be positive',
+        });
+      }
       const userWithUrls = await prisma.user.findUnique({
         where: {
           apiKey: user.apiKey,
@@ -179,7 +184,7 @@ v2Routes.get(
         include: {
           shortens: {
             take: PAGE_SIZE,
-            skip: pageNo * PAGE_SIZE,
+            skip: (pageNo - 1) * PAGE_SIZE,
           },
         },
       });
@@ -204,6 +209,10 @@ v2Routes.get(
             lastAccessedAt: r.lastAccessedAt,
             expiryDate: r.expiryDate,
           })),
+          pagination: {
+            page: pageNo,
+            pageSize: PAGE_SIZE,
+          },
         },
       });
     } catch (e) {
