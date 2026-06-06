@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "bunx --bun prisma generate && tsc",
     "start": "node dist/server.js",
-    "test": "bun test src/tests"
+    "test": "NODE_ENV=test bun test src/tests"
   },
   "keywords": [],
   "author": "",

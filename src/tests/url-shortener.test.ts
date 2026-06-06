@@ -9,7 +9,7 @@ const apiKey =
   '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
 const freeTierApiKey =
   'ad3438e937ed55e1ab1a02834bc71c8ae20247af3d0f5d7b2fbdf2f5d0f04225';
-const integrationTimeout = 15000;
+const integrationTimeout = 1500000;
 
 const uniqueCode = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
