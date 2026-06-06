@@ -11,6 +11,7 @@ datasource db {
 enum Tier {
   HOBBY
   ENTERPRISE
+  FREE
 }
 
 model UrlShortener {
@@ -34,7 +35,7 @@ model User {
   name    String?
   apiKey  String @unique
   shortens UrlShortener[]
-  tier     Tier  @default(HOBBY)
+  tier     Tier  @default(FREE)
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   deletedAt   DateTime? @db.Timestamptz(6)
