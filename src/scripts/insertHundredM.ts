@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import { query } from '../config/db';
+import { prisma } from '../db/prisma';
 
 const TOTAL_ROWS = 100_000_000;
 const BATCH_SIZE = 10_000;
@@ -22,7 +22,7 @@ function buildRows(start: number, count: number): InsertRow[] {
   });
 }
 
-async function insertBatch(rows: InsertRow[]) {
+async function insertBatch(tx: typeof prisma, rows: InsertRow[]) {
   const placeholders: string[] = [];
   const params: string[] = [];
 
@@ -34,30 +34,30 @@ async function insertBatch(rows: InsertRow[]) {
     params.push(row.originalUrl, row.shortCode);
   });
 
-  const result = await query(
+  const result = await tx.$queryRawUnsafe<{ originalUrl: string }[]>(
     `
       INSERT INTO "UrlShortener" ("originalUrl", "shortCode")
       VALUES ${placeholders.join(', ')}
       ON CONFLICT ("shortCode") DO NOTHING
       RETURNING "originalUrl"
     `,
-    params,
+    ...params,
   );
 
   const insertedUrls = new Set(
-    result.rows.map((row: { originalUrl: string }) => row.originalUrl),
+    result.map((row: { originalUrl: string }) => row.originalUrl),
   );
 
   return rows.filter((row) => !insertedUrls.has(row.originalUrl));
 }
 
-async function insertWithRetries(rows: InsertRow[]) {
+async function insertWithRetries(tx: typeof prisma, rows: InsertRow[]) {
   let pendingRows = rows;
   let attempts = 0;
   let inserted = 0;
 
   while (pendingRows.length > 0 && attempts <= MAX_RETRY_ATTEMPTS) {
-    const failedRows = await insertBatch(pendingRows);
+    const failedRows = await insertBatch(tx, pendingRows);
     inserted += pendingRows.length - failedRows.length;
 
     pendingRows = failedRows.map((row) => ({
@@ -85,16 +85,14 @@ async function insertHundredM() {
       const currentBatchSize = Math.min(BATCH_SIZE, TOTAL_ROWS - offset);
       const rows = buildRows(offset, currentBatchSize);
 
-      await query('BEGIN');
-      try {
-        totalInserted += await insertWithRetries(rows);
-        await query('COMMIT');
-      } catch (error) {
-        await query('ROLLBACK');
-        throw error;
-      }
+      totalInserted += await prisma.$transaction((tx) =>
+        insertWithRetries(tx as typeof prisma, rows),
+      );
 
-      if (totalInserted % LOG_EVERY_ROWS === 0 || totalInserted === TOTAL_ROWS) {
+      if (
+        totalInserted % LOG_EVERY_ROWS === 0 ||
+        totalInserted === TOTAL_ROWS
+      ) {
         const elapsedSeconds = ((performance.now() - start) / 1000).toFixed(2);
         console.log(
           `Inserted ${totalInserted.toLocaleString()} / ${TOTAL_ROWS.toLocaleString()} rows in ${elapsedSeconds}s`,
@@ -110,6 +108,8 @@ async function insertHundredM() {
   } catch (error) {
     console.error('Failed to insert rows', error);
     process.exit(1);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
