@@ -1,4 +1,6 @@
+import './utils/instrument';
 import dotenv from 'dotenv';
+import * as Sentry from '@sentry/node';
 import express, { Router } from 'express';
 import { randomBytes } from 'node:crypto';
 import crypto from 'crypto';
@@ -41,6 +43,7 @@ app.use(timeMiddlewareHandler('logger', loggerHandler));
 app.use(timeMiddlewareHandler('api-request-time', apiRequestTimeHandler));
 app.use(timeMiddlewareHandler('blacklist', blacklistHandler));
 app.use('/api/v1', routes);
+Sentry.setupExpressErrorHandler(app);
 // error handler middleware
 app.use(errorHandler);
 
@@ -468,5 +471,9 @@ routes.get('/analytics', async (req, res) => {
     console.error(e);
     throw e;
   }
+});
+// Test sentry
+routes.get('/debug-sentry', (req, res) => {
+  throw new Error('My first Sentry error!');
 });
 export default app;
