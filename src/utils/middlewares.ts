@@ -1,21 +1,33 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { prisma } from '../lib/prisma';
+import { prisma } from '../db/prisma';
 import { Tier } from './enums';
 import path from 'path';
-import { readFileSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
+import { AppError } from '../shared/errors/AppError';
+import { errorResponse } from '../shared/responses/apiResponse';
+import { HTTP_STATUS } from '../shared/constants/httpStatus';
+
+let blacklistCache: {
+  fileUpdatedAt: number;
+  apiKeys: Set<string>;
+} | null = null;
+
 function errorHandler(
   err: any,
   _req: Request,
   res: Response,
   _next: NextFunction,
 ) {
-  const status = err.status || 500;
+  const status =
+    err instanceof AppError
+      ? err.statusCode
+      : err.status || HTTP_STATUS.INTERNAL_SERVER_ERROR;
   const message = err.message || 'Internal Server Error';
 
-  res.status(status).json({ error: message });
+  res.status(status).json(errorResponse(message));
 }
 async function loggerHandler(req: Request, _res: Response, next: NextFunction) {
-  await prisma.requestLogging
+  void prisma.requestLogging
     .create({
       data: {
         method: req?.method,
@@ -31,10 +43,9 @@ async function loggerHandler(req: Request, _res: Response, next: NextFunction) {
 async function authHandler(req: Request, res: Response, next: NextFunction) {
   const xApiKey = req.headers['x-api-key'];
   if (!xApiKey) {
-    return res.status(401).json({
-      status: false,
-      message: 'X API Key missing',
-    });
+    return res
+      .status(HTTP_STATUS.UNAUTHORIZED)
+      .json(errorResponse('X API Key missing'));
   }
   const user = await prisma.user.findUnique({
     where: {
@@ -42,29 +53,49 @@ async function authHandler(req: Request, res: Response, next: NextFunction) {
     },
   });
   if (!user) {
-    return res.status(401).json({
-      status: false,
-      message: 'Unauthorized access',
-    });
+    return res
+      .status(HTTP_STATUS.UNAUTHORIZED)
+      .json(errorResponse('Unauthorized access'));
   }
-  (req as any).user = user;
+  req.user = user;
   next();
 }
 async function tierHandler(req: Request, res: Response, next: NextFunction) {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user) {
-    return res.status(401).json({
-      status: false,
-      message: 'Unauthorized access',
-    });
+    return res
+      .status(HTTP_STATUS.UNAUTHORIZED)
+      .json(errorResponse('Unauthorized access'));
   }
   if (user.tier !== Tier.ENTERPRISE) {
-    return res.status(403).json({
-      status: false,
-      message: 'Please upgrade to enterprise plan to batch insert',
-    });
+    return res
+      .status(HTTP_STATUS.FORBIDDEN)
+      .json(errorResponse('Please upgrade to enterprise plan to batch insert'));
   }
   next();
+}
+async function getBlacklistAPIKeys(filePath: string) {
+  const fileStat = await stat(filePath);
+  const fileUpdatedAt = fileStat.mtimeMs;
+
+  if (blacklistCache && blacklistCache.fileUpdatedAt === fileUpdatedAt) {
+    return blacklistCache.apiKeys;
+  }
+
+  const data = await readFile(filePath, 'utf8');
+  const apiKeys = new Set(
+    data
+      .split('\n')
+      .map((apiKey) => apiKey.trim())
+      .filter(Boolean),
+  );
+
+  blacklistCache = {
+    fileUpdatedAt,
+    apiKeys,
+  };
+
+  return apiKeys;
 }
 async function blacklistHandler(
   req: Request,
@@ -77,16 +108,12 @@ async function blacklistHandler(
   }
   try {
     const filePath = path.join(process.cwd(), 'src', 'config', 'blacklist.txt');
-    const data = readFileSync(filePath, 'utf8');
-    const blacklistAPIKey = data.split('\n');
-    const isBlacklistAPIKeyFound = blacklistAPIKey.find(
-      (r) => r.trim() === clientXAPIKey,
-    );
-    if (isBlacklistAPIKeyFound) {
-      return res.status(403).json({
-        status: false,
-        message: 'Unauthorized access',
-      });
+    const blacklistAPIKeys = await getBlacklistAPIKeys(filePath);
+
+    if (blacklistAPIKeys.has(clientXAPIKey as string)) {
+      return res
+        .status(HTTP_STATUS.FORBIDDEN)
+        .json(errorResponse('Unauthorized access'));
     }
     next();
   } catch (e) {
@@ -99,15 +126,14 @@ async function apiRequestTimeHandler(
   res: Response,
   next: NextFunction,
 ) {
-  const startTime = new Date();
-  res.setHeader('X-Response-Start-Time', `${startTime}ms`);
-  const originalJSON = res.json;
+  const startTime = Date.now();
+  const originalWriteHead = res.writeHead;
 
-  res.json = function (body) {
-    const endTime = new Date();
-    const timeElapsed = endTime.getTime() - startTime.getTime();
+  res.setHeader('X-Response-Start-Time', new Date(startTime).toISOString());
+  res.writeHead = function (...args: any[]) {
+    const timeElapsed = Date.now() - startTime;
     res.setHeader('X-Response-Time', `${timeElapsed}ms`);
-    return originalJSON.call(this, body);
+    return originalWriteHead.apply(this, args as any);
   };
   next();
 }
