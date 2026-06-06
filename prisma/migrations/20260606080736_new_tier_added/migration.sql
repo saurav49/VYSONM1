@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "Tier" ADD VALUE 'FREE';
+
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "tier" SET DEFAULT 'FREE';

@@ -1,8 +1,51 @@
 import { randomBytes } from 'node:crypto';
 import { prisma } from '../lib/prisma';
-import { Request, Response, NextFunction } from 'express';
+import { Request } from 'express';
+import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
 
+const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
+const MAX_CACHE_SIZE = 1000;
+
+async function deleteCache(code: string) {
+  await redis.del(`shortCode:${code}`);
+}
+async function setCache({
+  code,
+  originalUrl,
+}: {
+  code: string;
+  originalUrl: string;
+}) {
+  const cachedKey = `shortCode:${code}`;
+  await redis.set(cachedKey, originalUrl, 'EX', 3600);
+}
+async function setCacheFIFO({
+  code,
+  originalUrl,
+}: {
+  code: string;
+  originalUrl: string;
+}) {
+  const cachedKey = `shortCode:${code}`;
+  const exists = await redis.exists(cachedKey);
+
+  await redis.set(cachedKey, originalUrl);
+
+  if (!exists) {
+    await redis.rpush(FIFO_QUEUE_KEY, cachedKey);
+  }
+  const size = await redis.llen(FIFO_QUEUE_KEY);
+  if (size > MAX_CACHE_SIZE) {
+    const oldestKey = await redis.rpop(FIFO_QUEUE_KEY);
+    if (oldestKey) {
+      await deleteCache(oldestKey);
+    }
+  }
+}
+async function getCache(code: string) {
+  return await redis.get(`shortCode:${code}`);
+}
 const isValidEmail = (email: string) => {
   const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return regex.test(email);
@@ -91,6 +134,9 @@ const handleCreateUrlShortener = async ({
         password: hashedPassword,
       },
     });
+    if (!response?.password && !response?.expiryDate) {
+      await setCache({ code: response.shortCode as string, originalUrl });
+    }
     return {
       statusCode: 201,
       body: {
@@ -120,4 +166,8 @@ export {
   isValidDateTime,
   handleCreateUrlShortener,
   hashPassword,
+  deleteCache,
+  setCache,
+  getCache,
+  setCacheFIFO,
 };

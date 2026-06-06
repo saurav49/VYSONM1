@@ -7,54 +7,67 @@ import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './lib/prisma';
 import {
+  deleteCache,
+  getCache,
   handleCreateUrlShortener,
   hashPassword,
   isValidEmail,
+  setCache,
 } from './utils/util';
 import {
   apiRequestTimeHandler,
   authHandler,
   blacklistHandler,
   errorHandler,
+  freeTierMiddleware,
   loggerHandler,
   tierHandler,
   timeMiddlewareHandler,
 } from './utils/middlewares';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
+import { limiter, redirectLimiter, shortenLimiter } from './config/limiter';
+import { PAGE_SIZE } from './utils/constants';
 const bcrypt = require('bcrypt');
+
+let cacheHit = 0;
+let cacheMiss = 0;
 
 dotenv.config();
 
-const routes = Router();
+const v1Routes = Router();
+const v2Routes = Router();
 
 const app = express();
+// only trust the proxy (that is one hop away)
+app.set('trust proxy', 1);
+app.use(limiter);
 app.use(
   cors({
     origin: '*', // REMOVE IN PRODUCTION
   }),
 );
 app.use(express.json());
-app.set('trust proxy', true);
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // logger middleware
 app.use(timeMiddlewareHandler('logger', loggerHandler));
 app.use(timeMiddlewareHandler('api-request-time', apiRequestTimeHandler));
 app.use(timeMiddlewareHandler('blacklist', blacklistHandler));
-app.use('/api/v1', routes);
+app.use('/api/v1', v1Routes);
+app.use('/api/v2', v2Routes);
 Sentry.setupExpressErrorHandler(app);
 // error handler middleware
 app.use(errorHandler);
 
 // health endpoint
-routes.get('/ping', (_req, res) => {
+v1Routes.get('/ping', (_req, res) => {
   return res.status(200).json({
     status: true,
     message: 'Server up and running',
   });
 });
-routes.get('/health', async (_req, res) => {
+v1Routes.get('/health', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return res.status(200).json({
@@ -71,7 +84,7 @@ routes.get('/health', async (_req, res) => {
 });
 
 // user endpoint
-routes.post('/users', async (req, res) => {
+v1Routes.post('/users', async (req, res) => {
   try {
     const { email, name } = req.body;
     if (!email || !name) {
@@ -109,9 +122,10 @@ routes.post('/users', async (req, res) => {
     });
   }
 });
-routes.get(
+v1Routes.get(
   '/users/short-list',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const user = (req as any).user;
@@ -154,9 +168,67 @@ routes.get(
     }
   },
 );
-routes.delete(
+v2Routes.get(
+  '/users/short-list',
+  timeMiddlewareHandler('auth', authHandler),
+  async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { page } = req.query;
+      console.log({ page });
+      if (!page) {
+        return res.status(404).json({
+          status: false,
+          message: 'Page number required',
+        });
+      }
+      const pageNo = +page - 1;
+      const userWithUrls = await prisma.user.findUnique({
+        where: {
+          apiKey: user.apiKey,
+        },
+        include: {
+          shortens: {
+            take: PAGE_SIZE,
+            skip: pageNo * PAGE_SIZE,
+          },
+        },
+      });
+      if (!userWithUrls) {
+        return res.status(401).json({
+          status: false,
+          message: 'User not found',
+        });
+      }
+      return res.status(200).json({
+        status: true,
+        data: {
+          id: userWithUrls.id,
+          email: userWithUrls.email,
+          name: userWithUrls.name,
+          tier: userWithUrls.tier,
+          shortens: userWithUrls.shortens.map((r) => ({
+            id: r.id,
+            originalUrl: r.originalUrl,
+            shortCode: r.shortCode,
+            clicks: r.clicks,
+            lastAccessedAt: r.lastAccessedAt,
+            expiryDate: r.expiryDate,
+          })),
+        },
+      });
+    } catch (e) {
+      return res.status(500).json({
+        status: false,
+        error: e,
+      });
+    }
+  },
+);
+v1Routes.delete(
   '/users',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const user = (req as any).user;
@@ -181,9 +253,11 @@ routes.delete(
 );
 
 // shorten endpoint
-routes.post(
+v1Routes.post(
   '/shorten',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
+  shortenLimiter,
   async (req, res) => {
     try {
       const { originalUrl, expiryDate, code, password } = req.body;
@@ -207,9 +281,10 @@ routes.post(
     }
   },
 );
-routes.patch(
+v1Routes.patch(
   '/shorten',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const { code, expiryDate, password } = req.body;
@@ -219,6 +294,18 @@ routes.patch(
         hashedPassword = await hashPassword(password);
       }
       const user = (req as any).user;
+      const url = await prisma.urlShortener.findFirst({
+        where: {
+          shortCode: code,
+          userId: user.id,
+        },
+      });
+      if (!url) {
+        return res.status(404).json({
+          status: false,
+          message: 'Url not found',
+        });
+      }
       const result = await prisma.urlShortener.updateMany({
         where: {
           shortCode: code,
@@ -235,6 +322,7 @@ routes.patch(
           message: 'Forbidden action',
         });
       }
+      await deleteCache(code as string);
       return res.status(200).json({
         status: true,
         data: result,
@@ -247,7 +335,7 @@ routes.patch(
     }
   },
 );
-routes.post(
+v1Routes.post(
   '/shorten/batch',
   timeMiddlewareHandler('auth', authHandler),
   timeMiddlewareHandler('tier', tierHandler),
@@ -314,9 +402,10 @@ routes.post(
     }
   },
 );
-routes.delete(
+v1Routes.delete(
   '/short-codes/:code',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const { code } = req.params;
@@ -342,6 +431,7 @@ routes.delete(
           message: 'Forbidden action',
         });
       }
+      await deleteCache(code as string);
       return res.status(200).json({
         status: true,
       });
@@ -355,8 +445,7 @@ routes.delete(
 );
 
 // redirect endpoint
-routes.get('/redirect', async (req, res) => {
-  const now = new Date().getTime();
+v1Routes.get('/redirect', redirectLimiter, async (req, res) => {
   const { code, password } = req.query;
   if (!code) {
     return res.status(400).json({
@@ -364,6 +453,11 @@ routes.get('/redirect', async (req, res) => {
       message: 'Code is required',
     });
   }
+  const cachedValue = await getCache(code as string);
+  if (cachedValue) {
+    return res.redirect(cachedValue);
+  }
+  const now = new Date().getTime();
   const result = await prisma.urlShortener.findUnique({
     where: {
       shortCode: code as string,
@@ -405,6 +499,9 @@ routes.get('/redirect', async (req, res) => {
       message: 'URL expired',
     });
   }
+  if (!result?.password && !result?.expiryDate && code) {
+    await setCache({ code: result.shortCode as string, originalUrl });
+  }
   await prisma.urlShortener.update({
     where: {
       shortCode: code as string,
@@ -414,11 +511,12 @@ routes.get('/redirect', async (req, res) => {
       lastAccessedAt: new Date(),
     },
   });
+  cacheMiss += 1;
   return res.redirect(originalUrl);
 });
 
 // benchmark endpoint added to test the /shorten POST request
-routes.post('/shorten-benchmark', async (req, res) => {
+v1Routes.post('/shorten-benchmark', async (req, res) => {
   let shortCode = '';
   shortCode = randomBytes(8).toString('base64url').slice(0, 10);
   const originalUrl = `https://terminaltrove.com/oha/${Date.now()}-${shortCode}`;
@@ -434,7 +532,7 @@ routes.post('/shorten-benchmark', async (req, res) => {
 });
 
 // analytics endpoint
-routes.get('/analytics', async (req, res) => {
+v1Routes.get('/analytics', async (req, res) => {
   try {
     const tenLatestUrlShortened = await prisma.urlShortener.findMany({
       where: { deletedAt: null },
@@ -473,7 +571,7 @@ routes.get('/analytics', async (req, res) => {
   }
 });
 // Test sentry
-routes.get('/debug-sentry', (req, res) => {
+v1Routes.get('/debug-sentry', (req, res) => {
   throw new Error('My first Sentry error!');
 });
 export default app;
