@@ -23,6 +23,7 @@ import {
 } from './utils/middlewares';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
+import { limiter } from './config/limiter';
 const bcrypt = require('bcrypt');
 
 let cacheHit = 0;
@@ -33,13 +34,15 @@ dotenv.config();
 const routes = Router();
 
 const app = express();
+app.use(limiter);
 app.use(
   cors({
     origin: '*', // REMOVE IN PRODUCTION
   }),
 );
 app.use(express.json());
-app.set('trust proxy', true);
+// only trust the proxy (that is one hop away)
+app.set('trust proxy', 1);
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // logger middleware

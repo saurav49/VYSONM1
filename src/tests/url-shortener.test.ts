@@ -131,6 +131,18 @@ describe('URL Shortener integration test', () => {
       .set('x-api-key', apiKey);
     expect(res.statusCode).toBe(403);
   });
+  it(
+    'should return 429 status code when it hits the limit',
+    async () => {
+      const numberOfRequest = 101;
+      let res;
+      for (let i = 0; i < numberOfRequest; i++) {
+        res = await request(app).get('/api/v1/health');
+      }
+      expect(res?.statusCode).toBe(429);
+    },
+    integrationTimeout,
+  );
 });
 
 describe('Cache URL Redirect', () => {
