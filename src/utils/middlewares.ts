@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { Tier } from './enums';
 import path from 'path';
 import { readFileSync } from 'node:fs';
+import { freeTierLimiter } from '../config/limiter';
 function errorHandler(
   err: any,
   _req: Request,
@@ -133,6 +134,20 @@ function timeMiddlewareHandler(name: string, middleware: any): RequestHandler {
     }
   };
 }
+async function freeTierMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const user = (req as any).user;
+  if (!user) {
+    return res.status(404).json({
+      status: false,
+      message: 'User not found',
+    });
+  }
+  return freeTierLimiter(req, res, next);
+}
 export {
   errorHandler,
   loggerHandler,
@@ -141,4 +156,5 @@ export {
   blacklistHandler,
   apiRequestTimeHandler,
   timeMiddlewareHandler,
+  freeTierMiddleware,
 };

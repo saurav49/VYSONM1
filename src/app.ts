@@ -17,6 +17,7 @@ import {
   authHandler,
   blacklistHandler,
   errorHandler,
+  freeTierMiddleware,
   loggerHandler,
   tierHandler,
   timeMiddlewareHandler,
@@ -118,6 +119,7 @@ routes.post('/users', async (req, res) => {
 routes.get(
   '/users/short-list',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const user = (req as any).user;
@@ -163,6 +165,7 @@ routes.get(
 routes.delete(
   '/users',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const user = (req as any).user;
@@ -190,6 +193,7 @@ routes.delete(
 routes.post(
   '/shorten',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   shortenLimiter,
   async (req, res) => {
     try {
@@ -217,6 +221,7 @@ routes.post(
 routes.patch(
   '/shorten',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const { code, expiryDate, password } = req.body;
@@ -337,6 +342,7 @@ routes.post(
 routes.delete(
   '/short-codes/:code',
   timeMiddlewareHandler('auth', authHandler),
+  freeTierMiddleware,
   async (req, res) => {
     try {
       const { code } = req.params;

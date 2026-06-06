@@ -1,4 +1,5 @@
 import { rateLimit } from 'express-rate-limit';
+import { Tier } from '../utils/enums';
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -31,4 +32,13 @@ const redirectLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-export { limiter, shortenLimiter, redirectLimiter };
+const freeTierLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  message: 'Too many request from this API Key, please try again later',
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  skip: (req) => (req as any).user?.tier !== Tier.FREE,
+});
+
+export { limiter, shortenLimiter, redirectLimiter, freeTierLimiter };

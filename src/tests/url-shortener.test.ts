@@ -7,6 +7,8 @@ import { getCache } from '../utils/util';
 
 const apiKey =
   '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
+const freeTierApiKey =
+  'ad3438e937ed55e1ab1a02834bc71c8ae20247af3d0f5d7b2fbdf2f5d0f04225';
 const integrationTimeout = 15000;
 
 const uniqueCode = (prefix: string) =>
@@ -171,6 +173,28 @@ describe('URL Shortener integration test', () => {
 
     expect(delRes.statusCode).toBe(200);
   }, 300000);
+  it(
+    'should rate limit free tier',
+    async () => {
+      const successIteration = 4;
+      let res;
+      for (let i = 0; i < successIteration; i++) {
+        res = await request(app)
+          .get('/api/v1/users/short-list')
+          .set('x-api-key', freeTierApiKey);
+      }
+      const failIteration = 2;
+      let failRes;
+      for (let i = 0; i < failIteration; i++) {
+        failRes = await request(app)
+          .get('/api/v1/users/short-list')
+          .set('x-api-key', freeTierApiKey);
+      }
+      expect(res?.statusCode).toBe(200);
+      expect(failRes?.statusCode).toBe(429);
+    },
+    60 * 1000,
+  );
 });
 
 describe('Cache URL Redirect', () => {
