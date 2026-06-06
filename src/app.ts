@@ -23,7 +23,7 @@ import {
 } from './utils/middlewares';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
-import { limiter } from './config/limiter';
+import { limiter, redirectLimiter, shortenLimiter } from './config/limiter';
 const bcrypt = require('bcrypt');
 
 let cacheHit = 0;
@@ -34,6 +34,8 @@ dotenv.config();
 const routes = Router();
 
 const app = express();
+// only trust the proxy (that is one hop away)
+app.set('trust proxy', 1);
 app.use(limiter);
 app.use(
   cors({
@@ -41,8 +43,6 @@ app.use(
   }),
 );
 app.use(express.json());
-// only trust the proxy (that is one hop away)
-app.set('trust proxy', 1);
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // logger middleware
@@ -190,6 +190,7 @@ routes.delete(
 routes.post(
   '/shorten',
   timeMiddlewareHandler('auth', authHandler),
+  shortenLimiter,
   async (req, res) => {
     try {
       const { originalUrl, expiryDate, code, password } = req.body;
@@ -375,7 +376,7 @@ routes.delete(
 );
 
 // redirect endpoint
-routes.get('/redirect', async (req, res) => {
+routes.get('/redirect', redirectLimiter, async (req, res) => {
   const { code, password } = req.query;
   if (!code) {
     return res.status(400).json({

@@ -143,6 +143,34 @@ describe('URL Shortener integration test', () => {
     },
     integrationTimeout,
   );
+  it('should rate limit redirect', async () => {
+    const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
+    const shortRes = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        originalUrl,
+      })
+      .set('x-api-key', apiKey);
+    const code = shortRes.body.data.shortCode;
+    const numberOfSuccessRequest = 49;
+    let res;
+    for (let i = 0; i < numberOfSuccessRequest; i++) {
+      res = await request(app).get(`/api/v1/redirect?code=${code}`);
+    }
+    const numberOfRejectRequest = 5;
+    let failRes;
+    for (let i = 0; i < numberOfRejectRequest; i++) {
+      failRes = await request(app).get(`/api/v1/redirect?code=${code}`);
+    }
+    expect(res?.statusCode).toBe(302);
+    expect(failRes?.statusCode).toBe(429);
+
+    const delRes = await request(app)
+      .delete(`/api/v1/short-codes/${code}`)
+      .set('x-api-key', apiKey);
+
+    expect(delRes.statusCode).toBe(200);
+  }, 300000);
 });
 
 describe('Cache URL Redirect', () => {
