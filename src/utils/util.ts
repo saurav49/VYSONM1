@@ -4,6 +4,9 @@ import { Request } from 'express';
 import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
 
+const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
+const MAX_CACHE_SIZE = 1000;
+
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
 }
@@ -16,6 +19,29 @@ async function setCache({
 }) {
   const cachedKey = `shortCode:${code}`;
   await redis.set(cachedKey, originalUrl, 'EX', 3600);
+}
+async function setCacheFIFO({
+  code,
+  originalUrl,
+}: {
+  code: string;
+  originalUrl: string;
+}) {
+  const cachedKey = `shortCode:${code}`;
+  const exists = await redis.exists(cachedKey);
+
+  await redis.set(cachedKey, originalUrl);
+
+  if (!exists) {
+    await redis.rpush(FIFO_QUEUE_KEY, cachedKey);
+  }
+  const size = await redis.llen(FIFO_QUEUE_KEY);
+  if (size > MAX_CACHE_SIZE) {
+    const oldestKey = await redis.rpop(FIFO_QUEUE_KEY);
+    if (oldestKey) {
+      await deleteCache(oldestKey);
+    }
+  }
 }
 async function getCache(code: string) {
   return await redis.get(`shortCode:${code}`);
@@ -143,4 +169,5 @@ export {
   deleteCache,
   setCache,
   getCache,
+  setCacheFIFO,
 };
