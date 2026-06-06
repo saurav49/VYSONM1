@@ -75,7 +75,7 @@ async function incrementRedirectStats({
   clicks,
 }: {
   shortCode: string;
-  clicks: number;
+  clicks: number | { increment: number };
 }) {
   return prisma.urlShortener.update({
     where: {

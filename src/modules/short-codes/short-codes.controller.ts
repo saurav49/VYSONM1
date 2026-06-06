@@ -10,7 +10,6 @@ import {
   remove,
   update,
 } from './short-codes.service';
-import { getCache } from '../../utils/util';
 
 function getAuthenticatedUser(req: Request) {
   if (!req.user) {
@@ -93,10 +92,6 @@ async function redirectShortCode(
   next: NextFunction,
 ) {
   try {
-    const cachedValue = await getCache(req.query.code as string);
-    if (cachedValue) {
-      return res.redirect(cachedValue);
-    }
     const originalUrl = await redirect({
       code: req.query.code,
       password: req.query.password,

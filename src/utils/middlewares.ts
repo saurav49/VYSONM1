@@ -165,12 +165,11 @@ async function freeTierMiddleware(
   res: Response,
   next: NextFunction,
 ) {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user) {
-    return res.status(404).json({
-      status: false,
-      message: 'User not found',
-    });
+    return res
+      .status(HTTP_STATUS.UNAUTHORIZED)
+      .json(errorResponse('Unauthorized access'));
   }
   return freeTierLimiter(req, res, next);
 }

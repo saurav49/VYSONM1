@@ -27,16 +27,16 @@ async function setCacheFIFO({
   const cachedKey = `shortCode:${code}`;
   const exists = await redis.exists(cachedKey);
 
-  await redis.set(cachedKey, originalUrl);
+  await redis.set(cachedKey, originalUrl, 'EX', 3600);
 
   if (!exists) {
     await redis.rpush(FIFO_QUEUE_KEY, cachedKey);
   }
   const size = await redis.llen(FIFO_QUEUE_KEY);
   if (size > MAX_CACHE_SIZE) {
-    const oldestKey = await redis.rpop(FIFO_QUEUE_KEY);
+    const oldestKey = await redis.lpop(FIFO_QUEUE_KEY);
     if (oldestKey) {
-      await deleteCache(oldestKey);
+      await redis.del(oldestKey);
     }
   }
 }

@@ -16,7 +16,7 @@ import {
   timeMiddlewareHandler,
 } from './middlewares/request-time.middleware';
 import { swaggerSpec } from './swagger';
-import { limiter, redirectLimiter, shortenLimiter } from './config/limiter';
+import { limiter } from './config/limiter';
 
 dotenv.config();
 
@@ -33,13 +33,14 @@ app.use(
   }),
 );
 app.use(express.json());
-app.use('/api/v1', v1Routes);
-app.use('/api/v2', v2Routes);
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(timeMiddlewareHandler('logger', loggerMiddleware));
 app.use(timeMiddlewareHandler('api-request-time', requestTimeMiddleware));
 app.use(timeMiddlewareHandler('blacklist', blacklistMiddleware));
+
+app.use('/api/v1', v1Routes);
+app.use('/api/v2', v2Routes);
 
 v1Routes.use(healthRouter);
 v1Routes.use(v1UsersRouter);

@@ -15,6 +15,7 @@ import {
 } from '../../shared/responses/apiResponse';
 import {
   deleteCache,
+  getCache,
   hashPassword,
   isValidDateTime,
   setCache,
@@ -231,6 +232,16 @@ async function redirect({
 }) {
   if (!code) {
     throw badRequest('Code is required');
+  }
+
+  const cachedUrl = await getCache(code as string);
+  if (cachedUrl) {
+    await incrementRedirectStats({
+      shortCode: code as string,
+      clicks: { increment: 1 },
+    });
+
+    return cachedUrl;
   }
 
   const result = await findActiveByShortCode(code as string);
