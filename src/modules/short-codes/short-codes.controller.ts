@@ -10,6 +10,7 @@ import {
   remove,
   update,
 } from './short-codes.service';
+import { getCache } from '../../utils/util';
 
 function getAuthenticatedUser(req: Request) {
   if (!req.user) {
@@ -19,7 +20,11 @@ function getAuthenticatedUser(req: Request) {
   return req.user;
 }
 
-async function createShortCode(req: Request, res: Response, next: NextFunction) {
+async function createShortCode(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const data = await create({
       user: getAuthenticatedUser(req),
@@ -32,7 +37,11 @@ async function createShortCode(req: Request, res: Response, next: NextFunction) 
   }
 }
 
-async function updateShortCode(req: Request, res: Response, next: NextFunction) {
+async function updateShortCode(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const data = await update({
       user: getAuthenticatedUser(req),
@@ -62,21 +71,32 @@ async function batchCreateShortCodes(
   }
 }
 
-async function deleteShortCode(req: Request, res: Response, next: NextFunction) {
+async function deleteShortCode(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     await remove({
       user: getAuthenticatedUser(req),
       code: req.params.code as string | undefined,
     });
-
     return res.status(HTTP_STATUS.OK).json(successResponse());
   } catch (error) {
     return next(error);
   }
 }
 
-async function redirectShortCode(req: Request, res: Response, next: NextFunction) {
+async function redirectShortCode(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
+    const cachedValue = await getCache(req.query.code as string);
+    if (cachedValue) {
+      return res.redirect(cachedValue);
+    }
     const originalUrl = await redirect({
       code: req.query.code,
       password: req.query.password,

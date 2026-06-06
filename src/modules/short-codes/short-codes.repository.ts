@@ -88,6 +88,21 @@ async function incrementRedirectStats({
   });
 }
 
+async function findFirstUniqueCode({
+  shortCode,
+  userId,
+}: {
+  shortCode?: string;
+  userId: number;
+}) {
+  return await prisma.urlShortener.findFirst({
+    where: {
+      shortCode: shortCode,
+      userId: userId,
+    },
+  });
+}
+
 export {
   createShortCode,
   findActiveByShortCode,
@@ -95,4 +110,5 @@ export {
   incrementRedirectStats,
   softDeleteShortCodeForUser,
   updateShortCodeForUser,
+  findFirstUniqueCode,
 };

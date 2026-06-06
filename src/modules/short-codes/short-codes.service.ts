@@ -9,8 +9,16 @@ import {
   notFound,
   unauthorized,
 } from '../../shared/errors/httpErrors';
-import { errorResponse, successResponse } from '../../shared/responses/apiResponse';
-import { hashPassword, isValidDateTime } from '../../utils/util';
+import {
+  errorResponse,
+  successResponse,
+} from '../../shared/responses/apiResponse';
+import {
+  deleteCache,
+  hashPassword,
+  isValidDateTime,
+  setCache,
+} from '../../utils/util';
 import {
   BatchCreateShortCodeBody,
   CreateShortCodeBody,
@@ -20,6 +28,7 @@ import {
   createShortCode as createShortCodeRecord,
   findActiveByShortCode,
   findByShortCode,
+  findFirstUniqueCode,
   incrementRedirectStats,
   softDeleteShortCodeForUser,
   updateShortCodeForUser,
@@ -44,7 +53,13 @@ function parseExpiryDate(expiryDate?: string) {
   return parsedExpiryDate;
 }
 
-async function create({ user, body }: { user: UserModel; body: CreateShortCodeBody }) {
+async function create({
+  user,
+  body,
+}: {
+  user: UserModel;
+  body: CreateShortCodeBody;
+}) {
   const { originalUrl, expiryDate, code, password } = body;
 
   if (!originalUrl) {
@@ -113,9 +128,32 @@ async function createResponse({
   }
 }
 
-async function update({ user, body }: { user: UserModel; body: PatchShortCodeBody }) {
-  const parsedExpiryDate = body.expiryDate ? new Date(body.expiryDate) : undefined;
-  const hashedPassword = body.password ? await hashPassword(body.password) : undefined;
+async function update({
+  user,
+  body,
+}: {
+  user: UserModel;
+  body: PatchShortCodeBody;
+}) {
+  const parsedExpiryDate = body.expiryDate
+    ? new Date(body.expiryDate)
+    : undefined;
+  const hashedPassword = body.password
+    ? await hashPassword(body.password)
+    : undefined;
+  const url = await findFirstUniqueCode({
+    shortCode: body.code,
+    userId: user.id,
+  });
+  if (!url) {
+    return {
+      statusCode: HTTP_STATUS.NOT_FOUND,
+      body: {
+        status: false,
+        message: 'URL not found',
+      },
+    };
+  }
   const result = await updateShortCodeForUser({
     shortCode: body.code,
     userId: user.id,
@@ -126,7 +164,7 @@ async function update({ user, body }: { user: UserModel; body: PatchShortCodeBod
   if (result.count === 0) {
     throw forbidden('Forbidden action');
   }
-
+  await deleteCache(body.code as string);
   return result;
 }
 
@@ -181,6 +219,7 @@ async function remove({ user, code }: { user: UserModel; code?: string }) {
   if (result.count === 0) {
     throw forbidden('Forbidden action');
   }
+  await deleteCache(code as string);
 }
 
 async function redirect({
@@ -214,6 +253,13 @@ async function redirect({
 
   if (result.expiryDate && result.expiryDate.getTime() < Date.now()) {
     throw notFound('URL expired');
+  }
+
+  if (!result?.password && !result?.expiryDate) {
+    await setCache({
+      code: result.shortCode as string,
+      originalUrl: result.originalUrl,
+    });
   }
 
   await incrementRedirectStats({

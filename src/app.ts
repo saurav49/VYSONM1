@@ -16,6 +16,7 @@ import {
   timeMiddlewareHandler,
 } from './middlewares/request-time.middleware';
 import { swaggerSpec } from './swagger';
+import { limiter, redirectLimiter, shortenLimiter } from './config/limiter';
 
 dotenv.config();
 
@@ -23,13 +24,15 @@ const app = express();
 const v1Routes = Router();
 const v2Routes = Router();
 
+// only trust the proxy (that is one hop away)
+app.set('trust proxy', 1);
+app.use(limiter);
 app.use(
   cors({
     origin: '*', // REMOVE IN PRODUCTION
   }),
 );
 app.use(express.json());
-app.set('trust proxy', true);
 app.use('/api/v1', v1Routes);
 app.use('/api/v2', v2Routes);
 

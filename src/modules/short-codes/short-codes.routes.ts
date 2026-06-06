@@ -17,6 +17,8 @@ import {
   patchShortCodeSchema,
   redirectShortCodeSchema,
 } from './short-codes.schemas';
+import { redirectLimiter, shortenLimiter } from '../../config/limiter';
+import { freeTierMiddleware } from '../../utils/middlewares';
 
 const shortCodesRouter = Router();
 
@@ -24,12 +26,15 @@ shortCodesRouter.post(
   '/shorten',
   timeMiddlewareHandler('auth', authMiddleware),
   validateRequest(createShortCodeSchema),
+  freeTierMiddleware,
+  shortenLimiter,
   createShortCode,
 );
 shortCodesRouter.patch(
   '/shorten',
   timeMiddlewareHandler('auth', authMiddleware),
   validateRequest(patchShortCodeSchema),
+  freeTierMiddleware,
   updateShortCode,
 );
 shortCodesRouter.post(
@@ -42,11 +47,13 @@ shortCodesRouter.post(
 shortCodesRouter.delete(
   '/short-codes/:code',
   timeMiddlewareHandler('auth', authMiddleware),
+  freeTierMiddleware,
   deleteShortCode,
 );
 shortCodesRouter.get(
   '/redirect',
   validateRequest(redirectShortCodeSchema),
+  redirectLimiter,
   redirectShortCode,
 );
 shortCodesRouter.post('/shorten-benchmark', benchmarkShortCode);

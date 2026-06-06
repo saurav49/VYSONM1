@@ -3,9 +3,12 @@ import app from '../app';
 import { describe, it, expect } from 'bun:test';
 import { prisma } from '../lib/prisma';
 import { Tier } from '../utils/enums';
+import { getCache } from '../utils/util';
 
 const apiKey =
   '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
+const freeTierApiKey =
+  'ad3438e937ed55e1ab1a02834bc71c8ae20247af3d0f5d7b2fbdf2f5d0f04225';
 const integrationTimeout = 15000;
 
 const uniqueCode = (prefix: string) =>
@@ -130,6 +133,103 @@ describe('URL Shortener integration test', () => {
       .set('x-api-key', apiKey);
     expect(res.statusCode).toBe(403);
   });
+  it(
+    'should return 429 status code when it hits the limit',
+    async () => {
+      const numberOfRequest = 101;
+      let res;
+      for (let i = 0; i < numberOfRequest; i++) {
+        res = await request(app).get('/api/v1/health');
+      }
+      expect(res?.statusCode).toBe(429);
+    },
+    integrationTimeout,
+  );
+  it('should rate limit redirect', async () => {
+    const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
+    const shortRes = await request(app)
+      .post('/api/v1/shorten')
+      .send({
+        originalUrl,
+      })
+      .set('x-api-key', apiKey);
+    const code = shortRes.body.data.shortCode;
+    const numberOfSuccessRequest = 49;
+    let res;
+    for (let i = 0; i < numberOfSuccessRequest; i++) {
+      res = await request(app).get(`/api/v1/redirect?code=${code}`);
+    }
+    const numberOfRejectRequest = 5;
+    let failRes;
+    for (let i = 0; i < numberOfRejectRequest; i++) {
+      failRes = await request(app).get(`/api/v1/redirect?code=${code}`);
+    }
+    expect(res?.statusCode).toBe(302);
+    expect(failRes?.statusCode).toBe(429);
+
+    const delRes = await request(app)
+      .delete(`/api/v1/short-codes/${code}`)
+      .set('x-api-key', apiKey);
+
+    expect(delRes.statusCode).toBe(200);
+  }, 300000);
+  it(
+    'should rate limit free tier',
+    async () => {
+      const successIteration = 4;
+      let res;
+      for (let i = 0; i < successIteration; i++) {
+        res = await request(app)
+          .get('/api/v1/users/short-list')
+          .set('x-api-key', freeTierApiKey);
+      }
+      const failIteration = 2;
+      let failRes;
+      for (let i = 0; i < failIteration; i++) {
+        failRes = await request(app)
+          .get('/api/v1/users/short-list')
+          .set('x-api-key', freeTierApiKey);
+      }
+      expect(res?.statusCode).toBe(200);
+      expect(failRes?.statusCode).toBe(429);
+    },
+    60 * 1000,
+  );
+});
+
+describe('Cache URL Redirect', () => {
+  it(
+    'should use cache',
+    async () => {
+      const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
+      const r = await request(app)
+        .post('/api/v1/shorten')
+        .send({
+          originalUrl,
+        })
+        .set('x-api-key', apiKey);
+
+      expect(r.statusCode).toBe(201);
+      const code = r.body.data.shortCode;
+      const redirectResponse1 = await request(app).get(
+        `/api/v1/redirect?code=${code}`,
+      );
+      const redirectResponse2 = await request(app).get(
+        `/api/v1/redirect?code=${code}`,
+      );
+
+      expect(redirectResponse1.statusCode).toBe(302);
+      expect(redirectResponse2.statusCode).toBe(302);
+      const cachedValue = await getCache(code);
+      expect(cachedValue).toBe(originalUrl);
+
+      const deleteResponse = await request(app)
+        .delete(`/api/v1/short-codes/${code}`)
+        .set('x-api-key', apiKey);
+      expect(deleteResponse.statusCode).toBe(200);
+    },
+    integrationTimeout,
+  );
 });
 
 // [Q8] What happens when you try to fetch a short code that doesn’t exist? Find out which http status code would suit best here. Add this as a test as well.
