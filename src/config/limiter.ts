@@ -6,7 +6,7 @@ const limiter = rateLimit({
   limit: 100,
   message: 'Too many request from this IP, please try again later',
   standardHeaders: 'draft-8',
-  legacyHeaders: false,
+  legacyHeaders: true,
 });
 
 const shortenLimiter = rateLimit({
@@ -21,7 +21,7 @@ const shortenLimiter = rateLimit({
   },
   message: 'Too many request from this API Key, please try again later',
   standardHeaders: 'draft-8',
-  legacyHeaders: false,
+  legacyHeaders: true,
 });
 
 const redirectLimiter = rateLimit({
@@ -29,7 +29,7 @@ const redirectLimiter = rateLimit({
   limit: 50,
   message: 'Too many request from this IP, please try again later',
   standardHeaders: 'draft-8',
-  legacyHeaders: false,
+  legacyHeaders: true,
 });
 
 const freeTierLimiter = rateLimit({
@@ -37,7 +37,7 @@ const freeTierLimiter = rateLimit({
   limit: 5,
   message: 'Too many request from this API Key, please try again later',
   standardHeaders: 'draft-8',
-  legacyHeaders: false,
+  legacyHeaders: true,
   skip: (req) => (req as any).user?.tier !== Tier.FREE,
 });
 
