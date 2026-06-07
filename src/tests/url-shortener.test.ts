@@ -511,7 +511,7 @@ describe('URL Shortener batch creation', () => {
       .set('x-api-key', user.apiKey)
       .send([]);
 
-    expect(res.statusCode).toBe(401);
+    expect(res.statusCode).toBe(400);
   });
 
   it('should return item-level 409 for a duplicate custom code', async () => {
