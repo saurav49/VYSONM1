@@ -1,5 +1,6 @@
 import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
+import crypto from 'crypto';
 
 const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
 const MAX_CACHE_SIZE = 1000;
@@ -55,6 +56,12 @@ async function hashPassword(password: string) {
   const saltRounds = 10;
   return await bcrypt.hash(password, saltRounds);
 }
+function hasFeature(userId: string) {
+  const hash = crypto.createHash('sha256').update(String(userId)).digest('hex');
+  const bucket = parseInt(hash.substring(0, 8), 16) % 100;
+
+  return bucket < 10;
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -63,4 +70,5 @@ export {
   setCache,
   getCache,
   setCacheFIFO,
+  hasFeature,
 };
