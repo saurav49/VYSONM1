@@ -40,12 +40,8 @@ function applyValidatedData(req: Request, data: Partial<RequestParts>) {
     req.body = data.body;
   }
 
-  if (data.params !== undefined) {
+  if (data?.params && data.params !== undefined) {
     req.params = data.params;
-  }
-
-  if (data.query !== undefined) {
-    req.query = data.query;
   }
 }
 

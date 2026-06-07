@@ -10,6 +10,7 @@ import {
   remove,
   update,
 } from './short-codes.service';
+import { retryLogic } from '../../utils/util';
 
 function getAuthenticatedUser(req: Request) {
   if (!req.user) {
@@ -25,9 +26,14 @@ async function createShortCode(
   next: NextFunction,
 ) {
   try {
-    const data = await create({
-      user: getAuthenticatedUser(req),
-      body: req.body,
+    const data = retryLogic({
+      fn: () =>
+        create({
+          user: getAuthenticatedUser(req),
+          body: req.body,
+        }),
+      retires: 3,
+      delay: 200,
     });
 
     return res.status(HTTP_STATUS.CREATED).json(successResponse(data));

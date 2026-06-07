@@ -62,6 +62,27 @@ function hasFeature(userId: string) {
 
   return bucket < 10;
 }
+async function retryLogic<T>({
+  fn,
+  retires = 3,
+  delay = 200,
+}: {
+  fn: () => Promise<T>;
+  retires: number;
+  delay: number;
+}): Promise<T> {
+  let error: any;
+  for (let i = 0; i < retires; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      console.error(`Retry ${i} : ${e}`);
+      error = e;
+      new Promise((res) => setTimeout(res, delay * 2 ** i));
+    }
+  }
+  throw error;
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -71,4 +92,5 @@ export {
   getCache,
   setCacheFIFO,
   hasFeature,
+  retryLogic,
 };
