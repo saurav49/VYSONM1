@@ -13,7 +13,7 @@ async function fetchAllUsersWithFile() {
   });
 }
 
-async function addThumbnail() {
+export async function addThumbnail() {
   try {
     const users = await fetchAllUsersWithFile();
     for (const user of users) {
@@ -23,7 +23,7 @@ async function addThumbnail() {
         await fs.mkdir(outputDir, { recursive: true });
 
         const uniqueName = Date.now() + '-' + `${user?.id}`;
-        const outputPath = path.join(outputDir, uniqueName);
+        const outputPath = path.join(outputDir, `${uniqueName}.jpg`);
 
         await sharp(user.file)
           .resize(300, 300)
@@ -33,7 +33,6 @@ async function addThumbnail() {
         await prisma.user.update({
           where: {
             id: user.id,
-            email: user.email,
           },
           data: {
             thumbnail: outputPath,
@@ -46,5 +45,3 @@ async function addThumbnail() {
     throw e;
   }
 }
-
-addThumbnail();

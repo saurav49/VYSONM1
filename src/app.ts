@@ -18,9 +18,8 @@ import {
 import { swaggerSpec } from './swagger';
 import { limiter } from './config/limiter';
 import { options, sleep } from './utils/util';
-import { upload } from './utils/fileUpload';
-import { authMiddleware } from './middlewares/auth.middleware';
-import { prisma } from './lib/prisma';
+import cron from 'node-cron';
+import { addThumbnail } from './scripts/addThumbnail';
 
 dotenv.config();
 
@@ -87,6 +86,14 @@ v2Routes.get('/async', async (_req, res) => {
 });
 
 v2Routes.use(v2UsersRouter);
+
+cron.schedule('0 0 * * *', async () => {
+  console.log('---------------------');
+  console.log('Running daily midnight cron job...');
+  await addThumbnail();
+  console.log('Task completed successfully.');
+  console.log('---------------------');
+});
 
 Sentry.setupExpressErrorHandler(app);
 app.use(errorMiddleware);
