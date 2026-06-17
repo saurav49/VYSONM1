@@ -9,6 +9,7 @@ async function fetchAllUsersWithFile() {
       file: {
         not: null,
       },
+      thumbnail: null,
     },
   });
 }

@@ -87,13 +87,13 @@ v2Routes.get('/async', async (_req, res) => {
 
 v2Routes.use(v2UsersRouter);
 
-cron.schedule('0 0 * * *', async () => {
-  console.log('---------------------');
-  console.log('Running daily midnight cron job...');
-  await addThumbnail();
-  console.log('Task completed successfully.');
-  console.log('---------------------');
-});
+// cron.schedule('* * * * *', async () => {
+//   console.log('---------------------');
+//   console.log('Running every minute cron job...');
+//   await addThumbnail();
+//   console.log('Task completed successfully.');
+//   console.log('---------------------');
+// });
 
 Sentry.setupExpressErrorHandler(app);
 app.use(errorMiddleware);
