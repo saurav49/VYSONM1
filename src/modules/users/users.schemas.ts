@@ -12,9 +12,19 @@ const createUserSchema = z.object({
 const userShortListSchema = z.object({
   body: z.any(),
   params: z.object({}).passthrough(),
-  query: z.object({
-    page: z.string().optional(),
-  }).passthrough(),
+  query: z
+    .object({
+      page: z.string().optional(),
+    })
+    .passthrough(),
 });
 
-export { createUserSchema, userShortListSchema };
+const fileUploadSchema = z.object({
+  file: z.object({
+    filename: z.string(),
+    mimetype: z.string(),
+    size: z.number(),
+  }),
+});
+
+export { createUserSchema, userShortListSchema, fileUploadSchema };

@@ -7,8 +7,9 @@ import {
   findUserWithPaginatedShortensByApiKey,
   findUserWithShortensByApiKey,
   softDeleteUserByApiKey,
+  uploadf,
 } from './users.repository';
-import { CreateUserInput } from './users.types';
+import { CreateUserInput, User } from './users.types';
 
 function mapShortens(shortens: any[]) {
   return shortens.map((shorten) => ({
@@ -40,6 +41,25 @@ async function createNewUser({ email, name }: CreateUserInput) {
   return {
     id: result.id,
     apiKey: result.apiKey,
+  };
+}
+
+async function fileUpload(
+  user: User | undefined,
+  file: Express.Multer.File | undefined,
+) {
+  if (!user || !user?.id) {
+    throw badRequest('Invalid user');
+  }
+  if (!file || !file?.path) {
+    throw badRequest('File upload failed');
+  }
+  await uploadf({
+    id: user.id,
+    path: file.path,
+  });
+  return {
+    message: 'File upload successful',
   };
 }
 
@@ -107,4 +127,5 @@ export {
   deleteUser,
   getPaginatedUserShortList,
   getUserShortList,
+  fileUpload,
 };

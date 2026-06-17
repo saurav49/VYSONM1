@@ -83,6 +83,24 @@ async function retryLogic<T>({
   }
   throw error;
 }
+const options = {
+  year: 'numeric' as 'numeric' | '2-digit' | undefined,
+  month: 'long' as
+    | 'numeric'
+    | '2-digit'
+    | 'long'
+    | 'short'
+    | 'narrow'
+    | undefined,
+  day: 'numeric' as 'numeric' | '2-digit' | undefined,
+  hour: '2-digit' as 'numeric' | '2-digit' | undefined,
+  minute: '2-digit' as 'numeric' | '2-digit' | undefined,
+  second: '2-digit' as 'numeric' | '2-digit' | undefined,
+  hour12: true, // Set to false for 24-hour clock
+};
+async function sleep() {
+  return new Promise((res) => setTimeout(res, 3000));
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -93,4 +111,6 @@ export {
   setCacheFIFO,
   hasFeature,
   retryLogic,
+  options,
+  sleep,
 };

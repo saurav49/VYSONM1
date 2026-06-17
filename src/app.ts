@@ -17,6 +17,10 @@ import {
 } from './middlewares/request-time.middleware';
 import { swaggerSpec } from './swagger';
 import { limiter } from './config/limiter';
+import { options, sleep } from './utils/util';
+import { upload } from './utils/fileUpload';
+import { authMiddleware } from './middlewares/auth.middleware';
+import { prisma } from './lib/prisma';
 
 dotenv.config();
 
@@ -48,6 +52,38 @@ v1Routes.use(shortCodesRouter);
 v1Routes.use(analyticsRouter);
 v1Routes.get('/debug-sentry', () => {
   throw new Error('My first Sentry error!');
+});
+
+v2Routes.get('/sync', async (_req, res) => {
+  console.log('SYNC REQUEST', new Date().toLocaleString('en-US', options));
+  await sleep();
+  console.log(
+    'SYNC TASK COMPLETED',
+    new Date().toLocaleString('en-US', options),
+  );
+  return res.status(200).json({
+    status: true,
+    message: 'done',
+  });
+});
+
+v2Routes.get('/async', async (_req, res) => {
+  console.log('ASYNC REQUEST', new Date().toLocaleString('en-US', options));
+  sleep().then(() => {
+    console.log(
+      'ASYNC BACKGROUND TASK COMPLETED',
+      new Date().toLocaleString('en-US', options),
+    );
+    console.log('Background task completed');
+  });
+  console.log(
+    'ASYNC TASK COMPLETED',
+    new Date().toLocaleString('en-US', options),
+  );
+  return res.status(200).json({
+    status: true,
+    message: 'Accepted',
+  });
 });
 
 v2Routes.use(v2UsersRouter);
