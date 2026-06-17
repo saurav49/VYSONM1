@@ -17,9 +17,10 @@ import {
 } from './middlewares/request-time.middleware';
 import { swaggerSpec } from './swagger';
 import { limiter } from './config/limiter';
-import { options, sleep } from './utils/util';
+import { generateThumbnail, options, sleep } from './utils/util';
 import cron from 'node-cron';
-import { addThumbnail } from './scripts/addThumbnail';
+import { TASK_QUEUE } from './utils/constants';
+import { TaskQueueAction } from './utils/enums';
 
 dotenv.config();
 
@@ -86,7 +87,7 @@ v2Routes.get('/async', async (_req, res) => {
 });
 
 v2Routes.use(v2UsersRouter);
-
+// WITHOUT QUEUE
 // cron.schedule('* * * * *', async () => {
 //   console.log('---------------------');
 //   console.log('Running every minute cron job...');
@@ -94,6 +95,36 @@ v2Routes.use(v2UsersRouter);
 //   console.log('Task completed successfully.');
 //   console.log('---------------------');
 // });
+
+// WITH QUEUE
+cron.schedule('* * * * *', async () => {
+  console.log('---------------------');
+  console.log('Running every minute cron job...');
+
+  const task = TASK_QUEUE.shift();
+  if (!task) {
+    console.log('No queued tasks.');
+    console.log('---------------------');
+    return;
+  }
+
+  if (task.type === TaskQueueAction.GENERATE_THUMBNAIL) {
+    try {
+      console.log(`Picked thumbnail task for user ${task.id}`);
+      await generateThumbnail({
+        imagePath: task.imagePath,
+        file: task.file,
+        id: task.id,
+      });
+      console.log(`Thumbnail task completed for user ${task.id}`);
+    } catch (e) {
+      console.error(`Thumbnail task failed for user ${task.id}`);
+      console.error(e);
+    }
+  }
+
+  console.log('---------------------');
+});
 
 Sentry.setupExpressErrorHandler(app);
 app.use(errorMiddleware);

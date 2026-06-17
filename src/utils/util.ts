@@ -1,9 +1,11 @@
 import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
 import crypto from 'crypto';
-
-const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
-const MAX_CACHE_SIZE = 1000;
+import sharp from 'sharp';
+import { prisma } from '../lib/prisma';
+import path from 'path';
+import fs from 'fs/promises';
+import { FIFO_QUEUE_KEY, MAX_CACHE_SIZE } from './constants';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -101,6 +103,37 @@ const options = {
 async function sleep() {
   return new Promise((res) => setTimeout(res, 3000));
 }
+async function generateThumbnail(data: {
+  imagePath: string;
+  file: string;
+  id: number;
+}) {
+  console.log(`Generating thumbnail for user ${data.id}`);
+
+  await sharp(data.file)
+    .resize(300, 300)
+    .jpeg({ quality: 90 })
+    .toFile(data.imagePath);
+
+  await prisma.user.update({
+    where: {
+      id: data.id,
+    },
+    data: {
+      thumbnail: data.imagePath,
+    },
+  });
+
+  console.log(`Thumbnail saved for user ${data.id}: ${data.imagePath}`);
+}
+async function thumbnailImagePath(id: number) {
+  const env = process.env.NODE_ENV ?? 'dev';
+  const outputDir = path.join(process.cwd(), 'public', 'thumbnail', env);
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const uniqueName = Date.now() + '-' + `${id}`;
+  return path.join(outputDir, `${uniqueName}.jpg`);
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -113,4 +146,6 @@ export {
   retryLogic,
   options,
   sleep,
+  generateThumbnail,
+  thumbnailImagePath,
 };

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { PAGE_SIZE } from '../../utils/constants';
-import { isValidEmail } from '../../utils/util';
+import { PAGE_SIZE, TASK_QUEUE } from '../../utils/constants';
+import { isValidEmail, thumbnailImagePath } from '../../utils/util';
 import { badRequest, unauthorized } from '../../shared/errors/httpErrors';
 import {
   createUser,
@@ -10,6 +10,7 @@ import {
   uploadf,
 } from './users.repository';
 import { CreateUserInput, User } from './users.types';
+import { TaskQueueAction } from '../../utils/enums';
 
 function mapShortens(shortens: any[]) {
   return shortens.map((shorten) => ({
@@ -54,12 +55,31 @@ async function fileUpload(
   if (!file || !file?.path) {
     throw badRequest('File upload failed');
   }
-  await uploadf({
+
+  console.log(`Upload request received for user ${user.id}`);
+
+  const res = await uploadf({
     id: user.id,
     path: file.path,
   });
+
+  console.log(`Uploaded file saved for user ${user.id}: ${file.path}`);
+
+  const outputPath = await thumbnailImagePath(user.id);
+  TASK_QUEUE.push({
+    type: TaskQueueAction.GENERATE_THUMBNAIL,
+    imagePath: outputPath,
+    file: file.path,
+    id: res.id,
+  });
+
+  console.log(`Thumbnail task queued for user ${user.id}`);
+  console.log(
+    `Returning upload response before thumbnail generation for user ${user.id}`,
+  );
+
   return {
-    message: 'File upload successful',
+    message: 'File uploaded; thumbnail generation queued',
   };
 }
 

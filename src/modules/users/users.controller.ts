@@ -68,7 +68,7 @@ async function fileUploadHandler(
 ) {
   try {
     const data = await fileUpload(req.user, req.file);
-    return res.status(HTTP_STATUS.OK).json(successResponse(data));
+    return res.status(HTTP_STATUS.ACCEPTED).json(successResponse(data));
   } catch (error) {
     console.error(error);
     return next(error);

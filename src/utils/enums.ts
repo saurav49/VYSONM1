@@ -3,4 +3,7 @@ enum Tier {
   ENTERPRISE = 'ENTERPRISE',
   FREE = 'FREE',
 }
-export { Tier };
+enum TaskQueueAction {
+  GENERATE_THUMBNAIL = 'GENERATE_THUMBNAIL',
+}
+export { Tier, TaskQueueAction };
