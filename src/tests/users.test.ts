@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'bun:test';
 import request from 'supertest';
 import app from '../app';
+import path from 'path';
+import { TASK_QUEUE } from '../utils/constants';
+import { TaskQueueAction } from '../utils/enums';
+
+const apiKey =
+  '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
 
 // user create
 describe('Users creation test', () => {
@@ -57,5 +63,24 @@ describe('User creation validation', () => {
       status: false,
       message: 'Invalid email',
     });
+  });
+});
+
+describe('User file upload', () => {
+  it('should return 202 for file upload', async () => {
+    const filePath = path.join(process.cwd(), 'src/tests/fixtures/nebo.png');
+    const res = await request(app)
+      .post('/api/v2/users/upload')
+      .set('x-api-key', apiKey)
+      .attach('file', filePath);
+
+    expect(res.statusCode).toBe(202);
+    expect(TASK_QUEUE).toHaveLength(1);
+    expect(TASK_QUEUE[0]).toMatchObject({
+      type: TaskQueueAction.GENERATE_THUMBNAIL,
+    });
+    expect(TASK_QUEUE[0].file).toBeTruthy();
+    expect(TASK_QUEUE[0].imagePath).toBeTruthy();
+    expect(TASK_QUEUE[0].id).toBeTruthy();
   });
 });

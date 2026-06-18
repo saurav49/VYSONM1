@@ -99,7 +99,9 @@ v2Routes.use(v2UsersRouter);
 // WITH QUEUE
 cron.schedule('* * * * *', async () => {
   console.log('---------------------');
-  console.log('Running every minute cron job...');
+  console.log(
+    `Running every minute cron job (${new Date().toDateString()}) ...`,
+  );
 
   const task = TASK_QUEUE.shift();
   if (!task) {

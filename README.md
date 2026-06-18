@@ -20,7 +20,7 @@ The main API endpoint is `/api/v1`. Version 2 user endpoints are available under
 | `GET`    | `/api/v1/ping`                 | Checks whether the server is running.                          |
 | `GET`    | `/api/v1/health`               | Checks server and database connectivity.                       |
 | `GET`    | `/api/v2/users/short-list`     | Lists the authenticated user's shortened URLs with pagination. |
-| `POST`   | `/api/v2/users/upload`         | Uploads an authenticated user's profile file.                  |
+| `POST`   | `/api/v2/users/upload`         | Uploads a user file and queues thumbnail generation.           |
 
 ## Tech Stack
 
@@ -210,9 +210,24 @@ The integration tests verify:
 - Password-protected URLs require the correct password
 - Users can list only their own shortened URLs
 - Analytics endpoint returns latest, popular, and most-shortened URL collections
+- User file upload returns `202 Accepted`
+- File upload enqueues a `GENERATE_THUMBNAIL` task in `TASK_QUEUE`
+- The queued thumbnail task includes the uploaded file path, thumbnail output path, and user id
 
 ```bash
 bun run test
+```
+
+To run only the file upload queue test in `src/tests/users.test.ts`:
+
+```bash
+NODE_ENV=test bun test src/tests/users.test.ts -t "User file upload"
+```
+
+Or run the exact test case by name:
+
+```bash
+NODE_ENV=test bun test src/tests/users.test.ts -t "should return 202 for file upload"
 ```
 
 ## API Usage
@@ -302,7 +317,7 @@ Returns the authenticated user's URL data without exposing API keys or password 
 
 ### Upload User File
 
-Uploads a file for the authenticated user and stores the file path on the user's `file` field.
+Uploads a file for the authenticated user, stores the file path on the user's `file` field, and queues thumbnail generation in the server's in-memory task queue.
 
 The request must be `multipart/form-data`, use the form field name `file`, and include the user's API key in the `x-api-key` header. Uploaded files are saved under `public/uploads/{NODE_ENV}`. If `NODE_ENV` is not set, the folder defaults to `public/uploads/dev`.
 
@@ -326,10 +341,12 @@ Example response:
 {
   "status": true,
   "data": {
-    "message": "File upload successful"
+    "message": "File uploaded; thumbnail generation queued"
   }
 }
 ```
+
+The endpoint returns `202 Accepted`. That means the upload request has completed, but thumbnail generation will continue in the background.
 
 ### Analytics
 
@@ -339,17 +356,43 @@ curl http://localhost:3000/api/v1/analytics
 
 Returns the last 10 shortened URLs, the 10 most popular URLs by clicks, and the top 10 original URLs by shorten count.
 
-## Cron Jobs
+## Background Queue
 
-The app uses `node-cron` to run a daily thumbnail job:
+The app uses a basic in-memory queue for the image upload to thumbnail generation flow.
+
+When a user uploads an image to `/api/v2/users/upload`:
+
+1. The upload endpoint saves the original image.
+2. It pushes a `GENERATE_THUMBNAIL` task into the global `TASK_QUEUE`.
+3. It immediately returns `202 Accepted` to the user.
+4. A background `node-cron` worker checks the queue every minute.
+5. If a task exists, the worker removes it from the queue, generates a `300x300` JPEG thumbnail with `sharp`, stores it under `public/thumbnail/{NODE_ENV}`, and updates the user's `thumbnail` field in PostgreSQL.
+
+The worker is started when the Express app starts. The upload request does not run thumbnail generation directly; it only enqueues the work.
 
 ```ts
 cron.schedule('* * * * *', async () => {
-  await addThumbnail();
+  const task = TASK_QUEUE.shift();
+  if (!task) {
+    console.log('No queued tasks.');
+    return;
+  }
+
+  if (task.type === TaskQueueAction.GENERATE_THUMBNAIL) {
+    await generateThumbnail(task);
+  }
 });
 ```
 
-This runs every minute in the server process timezone. The job loads users that have a `file` path and no `thumbnail`, generates a `300x300` JPEG thumbnail with `sharp`, stores it under `public/thumbnail/{NODE_ENV}`, and updates the user's `thumbnail` field in PostgreSQL.
+This queue is in-memory, so it is intentionally simple and development-focused. Queued tasks are lost if the server restarts, and multiple server processes would each have their own queue. For production, use a persistent queue such as Redis/BullMQ, RabbitMQ, SQS, or a similar worker system.
+
+Useful logs for this flow:
+
+- `Upload request received for user ...`
+- `Thumbnail task queued for user ...`
+- `Returning upload response before thumbnail generation for user ...`
+- `Picked thumbnail task for user ...`
+- `Thumbnail saved for user ...`
 
 # Load Testing
 
