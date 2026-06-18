@@ -17,7 +17,12 @@ import {
 } from './middlewares/request-time.middleware';
 import { swaggerSpec } from './swagger';
 import { limiter } from './config/limiter';
-import { generateThumbnail, options, sleep } from './utils/util';
+import {
+  flushRedirectStatsQueue,
+  generateThumbnail,
+  options,
+  sleep,
+} from './utils/util';
 import cron from 'node-cron';
 import { TASK_QUEUE } from './utils/constants';
 import { TaskQueueAction } from './utils/enums';
@@ -103,27 +108,45 @@ cron.schedule('* * * * *', async () => {
     `Running every minute cron job (${new Date().toDateString()}) ...`,
   );
 
-  const task = TASK_QUEUE.shift();
-  if (!task) {
-    console.log('No queued tasks.');
-    console.log('---------------------');
-    return;
-  }
+  const remainingQueue = [];
 
-  if (task.type === TaskQueueAction.GENERATE_THUMBNAIL) {
-    try {
-      console.log(`Picked thumbnail task for user ${task.id}`);
-      await generateThumbnail({
-        imagePath: task.imagePath,
-        file: task.file,
-        id: task.id,
-      });
-      console.log(`Thumbnail task completed for user ${task.id}`);
-    } catch (e) {
-      console.error(`Thumbnail task failed for user ${task.id}`);
-      console.error(e);
+  for (const task of TASK_QUEUE) {
+    if (!task) {
+      console.log('No queued tasks.');
+      console.log('---------------------');
+      return;
+    }
+
+    if (task.type === TaskQueueAction.GENERATE_THUMBNAIL) {
+      try {
+        console.log(`Picked thumbnail task for user ${task.id}`);
+        if (task.imagePath && task.file && task.id) {
+          await generateThumbnail({
+            imagePath: task.imagePath,
+            file: task.file,
+            id: task.id,
+          });
+        }
+        console.log(`Thumbnail task completed for user ${task.id}`);
+      } catch (e) {
+        console.error(`Thumbnail task failed for user ${task.id}`);
+        console.error(e);
+      }
+    } else {
+      remainingQueue.push(task);
     }
   }
+
+  TASK_QUEUE.length = 0;
+  TASK_QUEUE.push(...remainingQueue);
+
+  console.log('---------------------');
+});
+cron.schedule('*/5 * * * *', async () => {
+  console.log('---------------------');
+  console.log(`Running cron (${new Date().toISOString()})`);
+
+  await flushRedirectStatsQueue();
 
   console.log('---------------------');
 });

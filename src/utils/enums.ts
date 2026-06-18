@@ -5,5 +5,6 @@ enum Tier {
 }
 enum TaskQueueAction {
   GENERATE_THUMBNAIL = 'GENERATE_THUMBNAIL',
+  INCREMENT_REDIRECT_STATS = 'INCREMENT_REDIRECT_STATS',
 }
 export { Tier, TaskQueueAction };

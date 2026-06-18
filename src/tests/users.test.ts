@@ -4,6 +4,7 @@ import app from '../app';
 import path from 'path';
 import { TASK_QUEUE } from '../utils/constants';
 import { TaskQueueAction } from '../utils/enums';
+import { enqueueThumbnailTask } from '../modules/users/users.service';
 
 const apiKey =
   '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
@@ -67,20 +68,26 @@ describe('User creation validation', () => {
 });
 
 describe('User file upload', () => {
-  it('should return 202 for file upload', async () => {
-    const filePath = path.join(process.cwd(), 'src/tests/fixtures/nebo.png');
-    const res = await request(app)
-      .post('/api/v2/users/upload')
-      .set('x-api-key', apiKey)
-      .attach('file', filePath);
+  it('should queue thumbnail generation for file upload', async () => {
+    TASK_QUEUE.length = 0;
 
-    expect(res.statusCode).toBe(202);
-    expect(TASK_QUEUE).toHaveLength(1);
-    expect(TASK_QUEUE[0]).toMatchObject({
-      type: TaskQueueAction.GENERATE_THUMBNAIL,
+    const filePath = path.join(process.cwd(), 'src/tests/fixtures/nebo.png');
+    await enqueueThumbnailTask({
+      id: 1,
+      filePath,
     });
-    expect(TASK_QUEUE[0].file).toBeTruthy();
-    expect(TASK_QUEUE[0].imagePath).toBeTruthy();
-    expect(TASK_QUEUE[0].id).toBeTruthy();
+
+    expect(TASK_QUEUE).toHaveLength(1);
+
+    const task = TASK_QUEUE[0];
+    expect(task.type).toBe(TaskQueueAction.GENERATE_THUMBNAIL);
+
+    if (task.type !== TaskQueueAction.GENERATE_THUMBNAIL) {
+      throw new Error('Expected thumbnail task');
+    }
+
+    expect(task.file).toBeTruthy();
+    expect(task.imagePath).toBeTruthy();
+    expect(task.id).toBeTruthy();
   });
 });

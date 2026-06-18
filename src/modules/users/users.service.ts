@@ -23,6 +23,22 @@ function mapShortens(shortens: any[]) {
   }));
 }
 
+async function enqueueThumbnailTask({
+  id,
+  filePath,
+}: {
+  id: number;
+  filePath: string;
+}) {
+  const outputPath = await thumbnailImagePath(id);
+  TASK_QUEUE.push({
+    type: TaskQueueAction.GENERATE_THUMBNAIL,
+    imagePath: outputPath,
+    file: filePath,
+    id,
+  });
+}
+
 async function createNewUser({ email, name }: CreateUserInput) {
   if (!email || !name) {
     throw unauthorized('Email and name are required');
@@ -65,12 +81,9 @@ async function fileUpload(
 
   console.log(`Uploaded file saved for user ${user.id}: ${file.path}`);
 
-  const outputPath = await thumbnailImagePath(user.id);
-  TASK_QUEUE.push({
-    type: TaskQueueAction.GENERATE_THUMBNAIL,
-    imagePath: outputPath,
-    file: file.path,
+  await enqueueThumbnailTask({
     id: res.id,
+    filePath: file.path,
   });
 
   console.log(`Thumbnail task queued for user ${user.id}`);
@@ -145,6 +158,7 @@ async function deleteUser(apiKey: string) {
 export {
   createNewUser,
   deleteUser,
+  enqueueThumbnailTask,
   getPaginatedUserShortList,
   getUserShortList,
   fileUpload,

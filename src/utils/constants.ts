@@ -12,7 +12,12 @@ type GenerateThumbnailTask = {
   id: number;
 };
 
-type TaskQueueTask = GenerateThumbnailTask;
+type IncrementStatsTask = {
+  type: TaskQueueAction.INCREMENT_REDIRECT_STATS;
+  shortCode: string;
+};
+
+type TaskQueueTask = GenerateThumbnailTask | IncrementStatsTask;
 
 const TASK_QUEUE: TaskQueueTask[] = [];
 

@@ -1,11 +1,12 @@
 import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
 import crypto from 'crypto';
-import sharp from 'sharp';
 import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
-import { FIFO_QUEUE_KEY, MAX_CACHE_SIZE } from './constants';
+import { FIFO_QUEUE_KEY, MAX_CACHE_SIZE, TASK_QUEUE } from './constants';
+import { TaskQueueAction } from './enums';
+import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -108,6 +109,8 @@ async function generateThumbnail(data: {
   file: string;
   id: number;
 }) {
+  const { default: sharp } = await import('sharp');
+
   console.log(`Generating thumbnail for user ${data.id}`);
 
   await sharp(data.file)
@@ -134,6 +137,40 @@ async function thumbnailImagePath(id: number) {
   const uniqueName = Date.now() + '-' + `${id}`;
   return path.join(outputDir, `${uniqueName}.jpg`);
 }
+async function flushRedirectStatsQueue() {
+  const d: Record<string, number> = {};
+
+  const remainingQueue = [];
+
+  for (const task of TASK_QUEUE) {
+    if (
+      task.type === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
+      task.shortCode
+    ) {
+      d[task.shortCode] = (d[task.shortCode] || 0) + 1;
+    } else {
+      remainingQueue.push(task);
+    }
+  }
+
+  TASK_QUEUE.length = 0;
+  TASK_QUEUE.push(...remainingQueue);
+
+  const promises = Object.entries(d).map(([shortCode, clicks]) => {
+    return incrementRedirectStats({
+      shortCode,
+      clicks: { increment: clicks },
+    });
+  });
+
+  try {
+    await Promise.all(promises);
+    console.log('Increment stats task completed');
+  } catch (e) {
+    console.error(e);
+    console.error('Increment stats failed');
+  }
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -148,4 +185,5 @@ export {
   sleep,
   generateThumbnail,
   thumbnailImagePath,
+  flushRedirectStatsQueue,
 };
