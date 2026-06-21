@@ -11,6 +11,7 @@ import {
 } from './users.repository';
 import { CreateUserInput, User } from './users.types';
 import { TaskQueueAction } from '../../utils/enums';
+import { pb } from '../../utils/PubSub';
 
 function mapShortens(shortens: any[]) {
   return shortens.map((shorten) => ({
@@ -31,13 +32,10 @@ async function enqueueThumbnailTask({
   filePath: string;
 }) {
   const outputPath = await thumbnailImagePath(id);
-  TASK_QUEUE.push({
-    event: TaskQueueAction.IMAGE_UPLOAD,
-    data: {
-      imagePath: outputPath,
-      file: filePath,
-      id,
-    },
+  pb.publish(TaskQueueAction.IMAGE_UPLOAD, {
+    imagePath: outputPath,
+    file: filePath,
+    id,
   });
 }
 
@@ -83,7 +81,7 @@ async function fileUpload(
 
   console.log(`Uploaded file saved for user ${user.id}: ${file.path}`);
 
-  await enqueueThumbnailTask({
+  enqueueThumbnailTask({
     id: res.id,
     filePath: file.path,
   });

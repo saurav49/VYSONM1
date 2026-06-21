@@ -100,19 +100,19 @@ v2Routes.use(v2UsersRouter);
 // });
 
 // WITH QUEUE
-cron.schedule('* * * * *', async () => {
-  console.log('---------------------');
-  console.log(
-    `Running every minute cron job (${new Date().toDateString()}) ...`,
-  );
+// cron.schedule('* * * * *', async () => {
+//   console.log('---------------------');
+//   console.log(
+//     `Running every minute cron job (${new Date().toDateString()}) ...`,
+//   );
 
-  const w1 = imageProcessingWorker('w1');
-  const w2 = imageProcessingWorker('w2');
+//   const w1 = imageProcessingWorker('w1');
+//   const w2 = imageProcessingWorker('w2');
 
-  await Promise.all([w1, w2]);
+//   await Promise.all([w1, w2]);
 
-  console.log('---------------------');
-});
+//   console.log('---------------------');
+// });
 cron.schedule('*/5 * * * *', async () => {
   console.log('---------------------');
   console.log(`Running cron (${new Date().toISOString()})`);

@@ -236,4 +236,6 @@ export {
   flushRedirectStatsQueue,
   imageProcessingWorker,
   SUBSCRIBERS,
+  logUpload,
+  notifyAdmin,
 };
