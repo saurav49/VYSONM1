@@ -24,8 +24,6 @@ import {
   thumbnailGenWorker,
 } from './utils/util';
 import cron from 'node-cron';
-import { TASK_QUEUE } from './utils/constants';
-import { TaskQueueAction } from './utils/enums';
 
 dotenv.config();
 
