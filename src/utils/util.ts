@@ -52,14 +52,14 @@ async function setCacheFIFO({
 async function getCache(code: string) {
   return await redis.get(`shortCode:${code}`);
 }
-const isValidEmail = (email: string) => {
+function isValidEmail(email: string) {
   const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return regex.test(email);
-};
-const isValidDateTime = (value: string) => {
+}
+function isValidDateTime(value: string) {
   const timestamp = Date.parse(value);
   return !isNaN(timestamp);
-};
+}
 async function hashPassword(password: string) {
   const saltRounds = 10;
   return await bcrypt.hash(password, saltRounds);
@@ -142,11 +142,9 @@ async function thumbnailImagePath(id: number) {
   const uniqueName = Date.now() + '-' + `${id}`;
   return path.join(outputDir, `${uniqueName}.jpg`);
 }
-
 function isGenerateThumbnailTask(task: TaskQueueTask) {
   return task.type === TaskQueueAction.GENERATE_THUMBNAIL;
 }
-
 async function flushRedirectStatsQueue() {
   const d: Record<string, number> = {};
 
@@ -181,7 +179,6 @@ async function flushRedirectStatsQueue() {
     console.error('Increment stats failed');
   }
 }
-
 async function thumbnailGenWorker(workerName: string) {
   const reqdIndex = TASK_QUEUE.findIndex(isGenerateThumbnailTask);
   if (reqdIndex === -1) {
