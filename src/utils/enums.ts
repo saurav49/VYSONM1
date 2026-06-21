@@ -4,7 +4,7 @@ enum Tier {
   FREE = 'FREE',
 }
 enum TaskQueueAction {
-  GENERATE_THUMBNAIL = 'GENERATE_THUMBNAIL',
+  IMAGE_UPLOAD = 'IMAGE_UPLOAD',
   INCREMENT_REDIRECT_STATS = 'INCREMENT_REDIRECT_STATS',
 }
 export { Tier, TaskQueueAction };

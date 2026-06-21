@@ -211,7 +211,7 @@ The integration tests verify:
 - Users can list only their own shortened URLs
 - Analytics endpoint returns latest, popular, and most-shortened URL collections
 - User file upload returns `202 Accepted`
-- File upload enqueues a `GENERATE_THUMBNAIL` task in `TASK_QUEUE`
+- File upload enqueues a `IMAGE_UPLOAD` task in `TASK_QUEUE`
 - The queued thumbnail task includes the uploaded file path, thumbnail output path, and user id
 
 ```bash
@@ -363,7 +363,7 @@ The app uses a basic in-memory queue for the image upload to thumbnail generatio
 When a user uploads an image to `/api/v2/users/upload`:
 
 1. The upload endpoint saves the original image.
-2. It pushes a `GENERATE_THUMBNAIL` task into the global `TASK_QUEUE`.
+2. It pushes a `IMAGE_UPLOAD` task into the global `TASK_QUEUE`.
 3. It immediately returns `202 Accepted` to the user.
 4. A background `node-cron` worker checks the queue every minute.
 5. If a task exists, the worker removes it from the queue, generates a `300x300` JPEG thumbnail with `sharp`, stores it under `public/thumbnail/{NODE_ENV}`, and updates the user's `thumbnail` field in PostgreSQL.
@@ -378,7 +378,7 @@ cron.schedule('* * * * *', async () => {
     return;
   }
 
-  if (task.type === TaskQueueAction.GENERATE_THUMBNAIL) {
+  if (task.type === TaskQueueAction.IMAGE_UPLOAD) {
     await generateThumbnail(task);
   }
 });
