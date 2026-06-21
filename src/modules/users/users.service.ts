@@ -11,7 +11,7 @@ import {
 } from './users.repository';
 import { CreateUserInput, User } from './users.types';
 import { TaskQueueAction } from '../../utils/enums';
-import { pb } from '../../utils/PubSub';
+import { publisher } from '../../utils/PubSub';
 
 function mapShortens(shortens: any[]) {
   return shortens.map((shorten) => ({
@@ -32,11 +32,19 @@ async function enqueueThumbnailTask({
   filePath: string;
 }) {
   const outputPath = await thumbnailImagePath(id);
-  pb.publish(TaskQueueAction.IMAGE_UPLOAD, {
-    imagePath: outputPath,
-    file: filePath,
-    id,
-  });
+  // pb.publish(TaskQueueAction.IMAGE_UPLOAD, {
+  //   imagePath: outputPath,
+  //   file: filePath,
+  //   id,
+  // });
+  publisher.publish(
+    TaskQueueAction.IMAGE_UPLOAD,
+    JSON.stringify({
+      imagePath: outputPath,
+      file: filePath,
+      id,
+    }),
+  );
 }
 
 async function createNewUser({ email, name }: CreateUserInput) {
