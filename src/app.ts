@@ -21,7 +21,7 @@ import {
   flushRedirectStatsQueue,
   options,
   sleep,
-  thumbnailGenWorker,
+  imageProcessingWorker,
 } from './utils/util';
 import cron from 'node-cron';
 
@@ -106,8 +106,8 @@ cron.schedule('* * * * *', async () => {
     `Running every minute cron job (${new Date().toDateString()}) ...`,
   );
 
-  const w1 = thumbnailGenWorker('w1');
-  const w2 = thumbnailGenWorker('w2');
+  const w1 = imageProcessingWorker('w1');
+  const w2 = imageProcessingWorker('w2');
 
   await Promise.all([w1, w2]);
 

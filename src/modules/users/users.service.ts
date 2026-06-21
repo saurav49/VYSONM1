@@ -32,10 +32,12 @@ async function enqueueThumbnailTask({
 }) {
   const outputPath = await thumbnailImagePath(id);
   TASK_QUEUE.push({
-    type: TaskQueueAction.GENERATE_THUMBNAIL,
-    imagePath: outputPath,
-    file: filePath,
-    id,
+    event: TaskQueueAction.IMAGE_UPLOAD,
+    data: {
+      imagePath: outputPath,
+      file: filePath,
+      id,
+    },
   });
 }
 

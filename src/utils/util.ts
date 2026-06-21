@@ -106,8 +106,8 @@ const options = {
   second: '2-digit' as 'numeric' | '2-digit' | undefined,
   hour12: true, // Set to false for 24-hour clock
 };
-async function sleep() {
-  return new Promise((res) => setTimeout(res, 3000));
+async function sleep(timeInMs: number = 3000) {
+  return new Promise((res) => setTimeout(res, timeInMs));
 }
 async function generateThumbnail(data: {
   imagePath: string;
@@ -142,8 +142,10 @@ async function thumbnailImagePath(id: number) {
   const uniqueName = Date.now() + '-' + `${id}`;
   return path.join(outputDir, `${uniqueName}.jpg`);
 }
-function isGenerateThumbnailTask(task: TaskQueueTask) {
-  return task.type === TaskQueueAction.GENERATE_THUMBNAIL;
+function isImageUploadTask(
+  task: TaskQueueTask,
+): task is Extract<TaskQueueTask, { event: TaskQueueAction.IMAGE_UPLOAD }> {
+  return task.event === TaskQueueAction.IMAGE_UPLOAD;
 }
 async function flushRedirectStatsQueue() {
   const d: Record<string, number> = {};
@@ -152,10 +154,10 @@ async function flushRedirectStatsQueue() {
 
   for (const task of TASK_QUEUE) {
     if (
-      task.type === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
-      task.shortCode
+      task.event === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
+      task.data.shortCode
     ) {
-      d[task.shortCode] = (d[task.shortCode] || 0) + 1;
+      d[task.data.shortCode] = (d[task.data.shortCode] || 0) + 1;
     } else {
       remainingQueue.push(task);
     }
@@ -179,8 +181,14 @@ async function flushRedirectStatsQueue() {
     console.error('Increment stats failed');
   }
 }
-async function thumbnailGenWorker(workerName: string) {
-  const reqdIndex = TASK_QUEUE.findIndex(isGenerateThumbnailTask);
+async function logUpload() {
+  await sleep(1000);
+}
+async function notifyAdmin() {
+  await sleep(2000);
+}
+async function imageProcessingWorker(workerName: string) {
+  const reqdIndex = TASK_QUEUE.findIndex(isImageUploadTask);
   if (reqdIndex === -1) {
     console.log('No queued tasks.');
     console.log('---------------------');
@@ -192,21 +200,27 @@ async function thumbnailGenWorker(workerName: string) {
     console.log('---------------------');
     return;
   }
-  if (!isGenerateThumbnailTask(task)) {
+  if (!isImageUploadTask(task)) {
     return;
   }
   try {
-    console.log(`Picked thumbnail task for user ${task.id} by ${workerName}`);
-    await generateThumbnail({
-      imagePath: task.imagePath,
-      file: task.file,
-      id: task.id,
-    });
     console.log(
-      `Thumbnail task completed for user ${task.id} by ${workerName}`,
+      `Picked thumbnail task for user ${task.data.id} by ${workerName}`,
+    );
+    await Promise.all([
+      generateThumbnail({
+        imagePath: task.data.imagePath,
+        file: task.data.file,
+        id: task.data.id,
+      }),
+      logUpload(),
+      notifyAdmin(),
+    ]);
+    console.log(
+      `Thumbnail task completed for user ${task.data.id} by ${workerName}`,
     );
   } catch (e) {
-    console.error(`Thumbnail task failed for user ${task.id}`);
+    console.error(`Thumbnail task failed for user ${task.data.id}`);
     console.error(e);
   }
 }
@@ -225,5 +239,5 @@ export {
   generateThumbnail,
   thumbnailImagePath,
   flushRedirectStatsQueue,
-  thumbnailGenWorker,
+  imageProcessingWorker,
 };

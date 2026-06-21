@@ -6,18 +6,26 @@ const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
 const MAX_CACHE_SIZE = 1000;
 
 type GenerateThumbnailTask = {
-  type: TaskQueueAction.GENERATE_THUMBNAIL;
   imagePath: string;
   file: string;
   id: number;
 };
 
 type IncrementStatsTask = {
-  type: TaskQueueAction.INCREMENT_REDIRECT_STATS;
   shortCode: string;
 };
 
-type TaskQueueTask = GenerateThumbnailTask | IncrementStatsTask;
+type ImageUploadQueueTask = {
+  event: TaskQueueAction.IMAGE_UPLOAD;
+  data: GenerateThumbnailTask;
+};
+
+type IncrementStatsQueueTask = {
+  event: TaskQueueAction.INCREMENT_REDIRECT_STATS;
+  data: IncrementStatsTask;
+};
+
+type TaskQueueTask = ImageUploadQueueTask | IncrementStatsQueueTask;
 
 const TASK_QUEUE: TaskQueueTask[] = [];
 

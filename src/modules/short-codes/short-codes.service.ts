@@ -240,11 +240,11 @@ async function redirect({
   const cachedUrl = await getCache(code as string);
   if (cachedUrl) {
     TASK_QUEUE.push({
-      type: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-      shortCode: code as string,
+      event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+      data: { shortCode: code as string },
     });
     const incrementStatsQueue = TASK_QUEUE.filter(
-      (t) => t.type === TaskQueueAction.INCREMENT_REDIRECT_STATS,
+      (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
     );
     if (incrementStatsQueue.length > 100) {
       void flushRedirectStatsQueue();
@@ -282,11 +282,13 @@ async function redirect({
   }
 
   TASK_QUEUE.push({
-    type: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-    shortCode: code as string,
+    event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+    data: {
+      shortCode: code as string,
+    },
   });
   const incrementStatsQueue = TASK_QUEUE.filter(
-    (t) => t.type === TaskQueueAction.INCREMENT_REDIRECT_STATS,
+    (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
   );
   if (incrementStatsQueue.length > 100) {
     void flushRedirectStatsQueue();
