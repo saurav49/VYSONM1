@@ -4,7 +4,12 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
-import { FIFO_QUEUE_KEY, MAX_CACHE_SIZE, TASK_QUEUE } from './constants';
+import {
+  FIFO_QUEUE_KEY,
+  MAX_CACHE_SIZE,
+  TASK_QUEUE,
+  TaskQueueTask,
+} from './constants';
 import { TaskQueueAction } from './enums';
 import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 
@@ -137,6 +142,11 @@ async function thumbnailImagePath(id: number) {
   const uniqueName = Date.now() + '-' + `${id}`;
   return path.join(outputDir, `${uniqueName}.jpg`);
 }
+
+function isGenerateThumbnailTask(task: TaskQueueTask) {
+  return task.type === TaskQueueAction.GENERATE_THUMBNAIL;
+}
+
 async function flushRedirectStatsQueue() {
   const d: Record<string, number> = {};
 
@@ -171,6 +181,38 @@ async function flushRedirectStatsQueue() {
     console.error('Increment stats failed');
   }
 }
+
+async function thumbnailGenWorker(workerName: string) {
+  const reqdIndex = TASK_QUEUE.findIndex(isGenerateThumbnailTask);
+  if (reqdIndex === -1) {
+    console.log('No queued tasks.');
+    console.log('---------------------');
+    return;
+  }
+  const [task] = TASK_QUEUE.splice(reqdIndex, 1);
+  if (!task) {
+    console.log('No queued tasks.');
+    console.log('---------------------');
+    return;
+  }
+  if (!isGenerateThumbnailTask(task)) {
+    return;
+  }
+  try {
+    console.log(`Picked thumbnail task for user ${task.id} by ${workerName}`);
+    await generateThumbnail({
+      imagePath: task.imagePath,
+      file: task.file,
+      id: task.id,
+    });
+    console.log(
+      `Thumbnail task completed for user ${task.id} by ${workerName}`,
+    );
+  } catch (e) {
+    console.error(`Thumbnail task failed for user ${task.id}`);
+    console.error(e);
+  }
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -186,4 +228,5 @@ export {
   generateThumbnail,
   thumbnailImagePath,
   flushRedirectStatsQueue,
+  thumbnailGenWorker,
 };
