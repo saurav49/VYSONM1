@@ -207,15 +207,7 @@ async function imageProcessingWorker(workerName: string) {
     console.log(
       `Picked thumbnail task for user ${task.data.id} by ${workerName}`,
     );
-    await Promise.all([
-      generateThumbnail({
-        imagePath: task.data.imagePath,
-        file: task.data.file,
-        id: task.data.id,
-      }),
-      logUpload(),
-      notifyAdmin(),
-    ]);
+    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
     console.log(
       `Thumbnail task completed for user ${task.data.id} by ${workerName}`,
     );
@@ -224,6 +216,9 @@ async function imageProcessingWorker(workerName: string) {
     console.error(e);
   }
 }
+const SUBSCRIBERS = {
+  [TaskQueueAction.IMAGE_UPLOAD]: [generateThumbnail, logUpload, notifyAdmin],
+};
 export {
   isValidEmail,
   isValidDateTime,
@@ -240,4 +235,5 @@ export {
   thumbnailImagePath,
   flushRedirectStatsQueue,
   imageProcessingWorker,
+  SUBSCRIBERS,
 };
