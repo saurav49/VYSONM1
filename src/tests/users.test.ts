@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'bun:test';
 import request from 'supertest';
 import app from '../app';
+import path from 'path';
+import { TASK_QUEUE } from '../utils/constants';
+import { TaskQueueAction } from '../utils/enums';
+import { enqueueThumbnailTask } from '../modules/users/users.service';
+
+const apiKey =
+  '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
 
 // user create
 describe('Users creation test', () => {
@@ -57,5 +64,30 @@ describe('User creation validation', () => {
       status: false,
       message: 'Invalid email',
     });
+  });
+});
+
+describe('User file upload', () => {
+  it('should queue thumbnail generation for file upload', async () => {
+    TASK_QUEUE.length = 0;
+
+    const filePath = path.join(process.cwd(), 'src/tests/fixtures/nebo.png');
+    await enqueueThumbnailTask({
+      id: 1,
+      filePath,
+    });
+
+    expect(TASK_QUEUE).toHaveLength(1);
+
+    const task = TASK_QUEUE[0];
+    expect(task.type).toBe(TaskQueueAction.GENERATE_THUMBNAIL);
+
+    if (task.type !== TaskQueueAction.GENERATE_THUMBNAIL) {
+      throw new Error('Expected thumbnail task');
+    }
+
+    expect(task.file).toBeTruthy();
+    expect(task.imagePath).toBeTruthy();
+    expect(task.id).toBeTruthy();
   });
 });

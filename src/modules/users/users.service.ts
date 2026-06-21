@@ -1,14 +1,16 @@
 import crypto from 'crypto';
-import { PAGE_SIZE } from '../../utils/constants';
-import { isValidEmail } from '../../utils/util';
+import { PAGE_SIZE, TASK_QUEUE } from '../../utils/constants';
+import { isValidEmail, thumbnailImagePath } from '../../utils/util';
 import { badRequest, unauthorized } from '../../shared/errors/httpErrors';
 import {
   createUser,
   findUserWithPaginatedShortensByApiKey,
   findUserWithShortensByApiKey,
   softDeleteUserByApiKey,
+  uploadf,
 } from './users.repository';
-import { CreateUserInput } from './users.types';
+import { CreateUserInput, User } from './users.types';
+import { TaskQueueAction } from '../../utils/enums';
 
 function mapShortens(shortens: any[]) {
   return shortens.map((shorten) => ({
@@ -19,6 +21,22 @@ function mapShortens(shortens: any[]) {
     lastAccessedAt: shorten.lastAccessedAt,
     expiryDate: shorten.expiryDate,
   }));
+}
+
+async function enqueueThumbnailTask({
+  id,
+  filePath,
+}: {
+  id: number;
+  filePath: string;
+}) {
+  const outputPath = await thumbnailImagePath(id);
+  TASK_QUEUE.push({
+    type: TaskQueueAction.GENERATE_THUMBNAIL,
+    imagePath: outputPath,
+    file: filePath,
+    id,
+  });
 }
 
 async function createNewUser({ email, name }: CreateUserInput) {
@@ -40,6 +58,41 @@ async function createNewUser({ email, name }: CreateUserInput) {
   return {
     id: result.id,
     apiKey: result.apiKey,
+  };
+}
+
+async function fileUpload(
+  user: User | undefined,
+  file: Express.Multer.File | undefined,
+) {
+  if (!user || !user?.id) {
+    throw badRequest('Invalid user');
+  }
+  if (!file || !file?.path) {
+    throw badRequest('File upload failed');
+  }
+
+  console.log(`Upload request received for user ${user.id}`);
+
+  const res = await uploadf({
+    id: user.id,
+    path: file.path,
+  });
+
+  console.log(`Uploaded file saved for user ${user.id}: ${file.path}`);
+
+  await enqueueThumbnailTask({
+    id: res.id,
+    filePath: file.path,
+  });
+
+  console.log(`Thumbnail task queued for user ${user.id}`);
+  console.log(
+    `Returning upload response before thumbnail generation for user ${user.id}`,
+  );
+
+  return {
+    message: 'File uploaded; thumbnail generation queued',
   };
 }
 
@@ -105,6 +158,8 @@ async function deleteUser(apiKey: string) {
 export {
   createNewUser,
   deleteUser,
+  enqueueThumbnailTask,
   getPaginatedUserShortList,
   getUserShortList,
+  fileUpload,
 };

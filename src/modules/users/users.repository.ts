@@ -54,9 +54,21 @@ async function softDeleteUserByApiKey(apiKey: string) {
   });
 }
 
+async function uploadf(data: { id: number; path: string }) {
+  return await prisma.user.update({
+    where: {
+      id: data.id,
+    },
+    data: {
+      file: data.path,
+    },
+  });
+}
+
 export {
   createUser,
   findUserWithShortensByApiKey,
   findUserWithPaginatedShortensByApiKey,
   softDeleteUserByApiKey,
+  uploadf,
 };

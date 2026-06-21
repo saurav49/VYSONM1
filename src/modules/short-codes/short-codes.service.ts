@@ -15,6 +15,7 @@ import {
 } from '../../shared/responses/apiResponse';
 import {
   deleteCache,
+  flushRedirectStatsQueue,
   getCache,
   hashPassword,
   isValidDateTime,
@@ -34,6 +35,8 @@ import {
   softDeleteShortCodeForUser,
   updateShortCodeForUser,
 } from './short-codes.repository';
+import { TASK_QUEUE } from '../../utils/constants';
+import { TaskQueueAction } from '../../utils/enums';
 
 const bcrypt = require('bcrypt');
 
@@ -236,11 +239,16 @@ async function redirect({
 
   const cachedUrl = await getCache(code as string);
   if (cachedUrl) {
-    await incrementRedirectStats({
+    TASK_QUEUE.push({
+      type: TaskQueueAction.INCREMENT_REDIRECT_STATS,
       shortCode: code as string,
-      clicks: { increment: 1 },
     });
-
+    const incrementStatsQueue = TASK_QUEUE.filter(
+      (t) => t.type === TaskQueueAction.INCREMENT_REDIRECT_STATS,
+    );
+    if (incrementStatsQueue.length > 100) {
+      void flushRedirectStatsQueue();
+    }
     return cachedUrl;
   }
 
@@ -273,10 +281,16 @@ async function redirect({
     });
   }
 
-  await incrementRedirectStats({
+  TASK_QUEUE.push({
+    type: TaskQueueAction.INCREMENT_REDIRECT_STATS,
     shortCode: code as string,
-    clicks: typeof result.clicks === 'number' ? result.clicks + 1 : 0,
   });
+  const incrementStatsQueue = TASK_QUEUE.filter(
+    (t) => t.type === TaskQueueAction.INCREMENT_REDIRECT_STATS,
+  );
+  if (incrementStatsQueue.length > 100) {
+    void flushRedirectStatsQueue();
+  }
 
   return result.originalUrl;
 }

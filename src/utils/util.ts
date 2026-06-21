@@ -1,9 +1,12 @@
 import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
 import crypto from 'crypto';
-
-const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
-const MAX_CACHE_SIZE = 1000;
+import { prisma } from '../lib/prisma';
+import path from 'path';
+import fs from 'fs/promises';
+import { FIFO_QUEUE_KEY, MAX_CACHE_SIZE, TASK_QUEUE } from './constants';
+import { TaskQueueAction } from './enums';
+import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -83,6 +86,91 @@ async function retryLogic<T>({
   }
   throw error;
 }
+const options = {
+  year: 'numeric' as 'numeric' | '2-digit' | undefined,
+  month: 'long' as
+    | 'numeric'
+    | '2-digit'
+    | 'long'
+    | 'short'
+    | 'narrow'
+    | undefined,
+  day: 'numeric' as 'numeric' | '2-digit' | undefined,
+  hour: '2-digit' as 'numeric' | '2-digit' | undefined,
+  minute: '2-digit' as 'numeric' | '2-digit' | undefined,
+  second: '2-digit' as 'numeric' | '2-digit' | undefined,
+  hour12: true, // Set to false for 24-hour clock
+};
+async function sleep() {
+  return new Promise((res) => setTimeout(res, 3000));
+}
+async function generateThumbnail(data: {
+  imagePath: string;
+  file: string;
+  id: number;
+}) {
+  const { default: sharp } = await import('sharp');
+
+  console.log(`Generating thumbnail for user ${data.id}`);
+
+  await sharp(data.file)
+    .resize(300, 300)
+    .jpeg({ quality: 90 })
+    .toFile(data.imagePath);
+
+  await prisma.user.update({
+    where: {
+      id: data.id,
+    },
+    data: {
+      thumbnail: data.imagePath,
+    },
+  });
+
+  console.log(`Thumbnail saved for user ${data.id}: ${data.imagePath}`);
+}
+async function thumbnailImagePath(id: number) {
+  const env = process.env.NODE_ENV ?? 'dev';
+  const outputDir = path.join(process.cwd(), 'public', 'thumbnail', env);
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const uniqueName = Date.now() + '-' + `${id}`;
+  return path.join(outputDir, `${uniqueName}.jpg`);
+}
+async function flushRedirectStatsQueue() {
+  const d: Record<string, number> = {};
+
+  const remainingQueue = [];
+
+  for (const task of TASK_QUEUE) {
+    if (
+      task.type === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
+      task.shortCode
+    ) {
+      d[task.shortCode] = (d[task.shortCode] || 0) + 1;
+    } else {
+      remainingQueue.push(task);
+    }
+  }
+
+  TASK_QUEUE.length = 0;
+  TASK_QUEUE.push(...remainingQueue);
+
+  const promises = Object.entries(d).map(([shortCode, clicks]) => {
+    return incrementRedirectStats({
+      shortCode,
+      clicks: { increment: clicks },
+    });
+  });
+
+  try {
+    await Promise.all(promises);
+    console.log('Increment stats task completed');
+  } catch (e) {
+    console.error(e);
+    console.error('Increment stats failed');
+  }
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -93,4 +181,9 @@ export {
   setCacheFIFO,
   hasFeature,
   retryLogic,
+  options,
+  sleep,
+  generateThumbnail,
+  thumbnailImagePath,
+  flushRedirectStatsQueue,
 };

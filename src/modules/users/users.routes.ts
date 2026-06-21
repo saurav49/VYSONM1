@@ -4,12 +4,18 @@ import { timeMiddlewareHandler } from '../../middlewares/request-time.middleware
 import { validateRequest } from '../../shared/validation/validateRequest';
 import {
   create,
+  fileUploadHandler,
   paginatedShortList,
   remove,
   shortList,
 } from './users.controller';
-import { createUserSchema, userShortListSchema } from './users.schemas';
+import {
+  createUserSchema,
+  fileUploadSchema,
+  userShortListSchema,
+} from './users.schemas';
 import { freeTierMiddleware } from '../../utils/middlewares';
+import { upload } from '../../utils/fileUpload';
 
 const v1UsersRouter = Router();
 const v2UsersRouter = Router();
@@ -35,6 +41,13 @@ v2UsersRouter.get(
   validateRequest(userShortListSchema),
   freeTierMiddleware,
   paginatedShortList,
+);
+v2UsersRouter.post(
+  '/users/upload',
+  authMiddleware,
+  upload.single('file'),
+  validateRequest(fileUploadSchema),
+  fileUploadHandler,
 );
 
 export { v1UsersRouter, v2UsersRouter };

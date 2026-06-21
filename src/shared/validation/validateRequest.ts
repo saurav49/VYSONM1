@@ -51,6 +51,7 @@ function validateRequest(schema: RequestSchema) {
       body: req.body,
       params: req.params,
       query: req.query,
+      file: req.file,
     };
 
     try {

@@ -36,6 +36,9 @@ model User {
   apiKey  String @unique
   shortens UrlShortener[]
   tier     Tier  @default(FREE)
+  
+  file     String?
+  thumbnail String? 
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   deletedAt   DateTime? @db.Timestamptz(6)

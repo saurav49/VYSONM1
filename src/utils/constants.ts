@@ -1,3 +1,31 @@
-const PAGE_SIZE = 10;
+import { TaskQueueAction } from './enums';
 
-export { PAGE_SIZE };
+const PAGE_SIZE = 10;
+const ALLOWED_FILE_TYPE = ['image/jpeg', 'image/png', 'image/webp'];
+const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
+const MAX_CACHE_SIZE = 1000;
+
+type GenerateThumbnailTask = {
+  type: TaskQueueAction.GENERATE_THUMBNAIL;
+  imagePath: string;
+  file: string;
+  id: number;
+};
+
+type IncrementStatsTask = {
+  type: TaskQueueAction.INCREMENT_REDIRECT_STATS;
+  shortCode: string;
+};
+
+type TaskQueueTask = GenerateThumbnailTask | IncrementStatsTask;
+
+const TASK_QUEUE: TaskQueueTask[] = [];
+
+export {
+  PAGE_SIZE,
+  ALLOWED_FILE_TYPE,
+  TASK_QUEUE,
+  FIFO_QUEUE_KEY,
+  MAX_CACHE_SIZE,
+};
+export type { TaskQueueTask };
