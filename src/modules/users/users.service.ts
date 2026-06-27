@@ -1,9 +1,10 @@
 import crypto from 'crypto';
 import { PAGE_SIZE, TASK_QUEUE } from '../../utils/constants';
-import { isValidEmail, thumbnailImagePath } from '../../utils/util';
+import { isValidEmail, sleep, thumbnailImagePath } from '../../utils/util';
 import { badRequest, unauthorized } from '../../shared/errors/httpErrors';
 import {
   createUser,
+  findUser,
   findUserWithPaginatedShortensByApiKey,
   findUserWithShortensByApiKey,
   softDeleteUserByApiKey,
@@ -163,6 +164,50 @@ async function deleteUser(apiKey: string) {
   await softDeleteUserByApiKey(apiKey);
 }
 
+async function getThumbnailPerUser({ apiKey }: { apiKey: string }) {
+  const user = await findUser({ apiKey });
+  if (!user) {
+    throw unauthorized('User not found');
+  }
+  if (!user.file) {
+    return {
+      pollStatus: 'not_uploaded',
+      thumbnail: null,
+    };
+  }
+  if (user.thumbnail) {
+    return { pollStatus: 'done', thumbnail: user.thumbnail };
+  }
+  return { pollStatus: 'pending', thumbnail: user.thumbnail };
+}
+async function getThumbnailPerUserWithWait({ apiKey }: { apiKey: string }) {
+  let user = await findUser({ apiKey });
+  if (!user) {
+    throw unauthorized('User not found');
+  }
+  if (!user.file) {
+    return {
+      pollStatus: 'not_uploaded',
+      thumbnail: null,
+    };
+  }
+  if (user && user.thumbnail) {
+    return { pollStatus: 'done', thumbnail: user.thumbnail };
+  }
+  const startedAt = Date.now();
+  const timeToWaitInMs = 15000;
+  const sleepTimeInMs = 1000;
+
+  while (Date.now() - startedAt < timeToWaitInMs) {
+    user = await findUser({ apiKey });
+    if (user && user.thumbnail) {
+      return { pollStatus: 'done', thumbnail: user.thumbnail };
+    }
+    await sleep(sleepTimeInMs);
+  }
+  return { pollStatus: 'pending', thumbnail: user?.thumbnail };
+}
+
 export {
   createNewUser,
   deleteUser,
@@ -170,4 +215,6 @@ export {
   getPaginatedUserShortList,
   getUserShortList,
   fileUpload,
+  getThumbnailPerUser,
+  getThumbnailPerUserWithWait,
 };

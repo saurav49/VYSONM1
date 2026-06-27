@@ -8,6 +8,8 @@ import {
   paginatedShortList,
   remove,
   shortList,
+  thumbnailStatus,
+  thumbnailStatusWait,
 } from './users.controller';
 import {
   createUserSchema,
@@ -48,6 +50,12 @@ v2UsersRouter.post(
   upload.single('file'),
   validateRequest(fileUploadSchema),
   fileUploadHandler,
+);
+v2UsersRouter.get('/users/thumbnail/status', authMiddleware, thumbnailStatus);
+v2UsersRouter.get(
+  '/users/thumbnail/status/wait',
+  authMiddleware,
+  thumbnailStatusWait,
 );
 
 export { v1UsersRouter, v2UsersRouter };

@@ -65,10 +65,19 @@ async function uploadf(data: { id: number; path: string }) {
   });
 }
 
+async function findUser(data: { apiKey: string }) {
+  return await prisma.user.findUnique({
+    where: {
+      apiKey: data.apiKey,
+    },
+  });
+}
+
 export {
   createUser,
   findUserWithShortensByApiKey,
   findUserWithPaginatedShortensByApiKey,
   softDeleteUserByApiKey,
   uploadf,
+  findUser,
 };

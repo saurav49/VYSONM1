@@ -6,6 +6,8 @@ import {
   deleteUser,
   fileUpload,
   getPaginatedUserShortList,
+  getThumbnailPerUser,
+  getThumbnailPerUserWithWait,
   getUserShortList,
 } from './users.service';
 
@@ -75,4 +77,35 @@ async function fileUploadHandler(
   }
 }
 
-export { create, paginatedShortList, remove, shortList, fileUploadHandler };
+async function thumbnailStatus(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const data = await getThumbnailPerUser({
+    apiKey: getUserApiKey(req),
+  });
+
+  return res.status(HTTP_STATUS.OK).json(successResponse(data));
+}
+async function thumbnailStatusWait(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const data = await getThumbnailPerUserWithWait({
+    apiKey: getUserApiKey(req),
+  });
+
+  return res.status(HTTP_STATUS.OK).json(successResponse(data));
+}
+
+export {
+  create,
+  paginatedShortList,
+  remove,
+  shortList,
+  fileUploadHandler,
+  thumbnailStatus,
+  thumbnailStatusWait,
+};
