@@ -11,6 +11,7 @@ import {
   update,
 } from './short-codes.service';
 import { retryLogic } from '../../utils/util';
+import { broadcastLeaderboard } from '../../server';
 
 function getAuthenticatedUser(req: Request) {
   if (!req.user) {
@@ -26,7 +27,7 @@ async function createShortCode(
   next: NextFunction,
 ) {
   try {
-    const data = retryLogic({
+    const data = await retryLogic({
       fn: () =>
         create({
           user: getAuthenticatedUser(req),
@@ -102,7 +103,7 @@ async function redirectShortCode(
       code: req.query.code,
       password: req.query.password,
     });
-
+    void broadcastLeaderboard().catch((e) => console.error(e));
     return res.redirect(originalUrl);
   } catch (error) {
     return next(error);
