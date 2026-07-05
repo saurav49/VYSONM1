@@ -12,6 +12,7 @@ import {
 } from './constants';
 import { TaskQueueAction } from './enums';
 import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
+import { getAnalytics } from '../modules/analytics/analytics.service';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -175,6 +176,20 @@ async function flushRedirectStatsQueue() {
 
   try {
     await Promise.all(promises);
+    const analytics = await getAnalytics();
+    await fetch(process.env.ANALYTICS_WEBHOOK_URL!, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-webhook-secret': process.env.ANALYTICS_WEBHOOK_SECRET ?? '',
+      },
+      body: JSON.stringify({
+        event: 'analytics-updated',
+        data: analytics,
+        sentAt: new Date().toISOString(),
+      }),
+    });
+
     console.log('Increment stats task completed');
   } catch (e) {
     console.error(e);
