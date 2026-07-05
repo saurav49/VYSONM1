@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-
+const API_KEY =
+  '93348c22d930a0b9f8091661b0930a34eb2dd19b2e713396cc85b2f2d7c7ee01';
 type ShortUrl = {
   id?: number;
   originalUrl?: string;
@@ -55,9 +56,11 @@ const Leaderboard = () => {
   const [connectionState, setConnectionState] =
     useState<ConnectionState>('connecting');
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
-  console.log({ leaderboard });
+
   useEffect(() => {
-    const socket = new WebSocket('ws://localhost:3000/ws/leaderboard');
+    const socket = new WebSocket(
+      `ws://localhost:3000/ws/leaderboard?apiKey=${API_KEY}`,
+    );
 
     socket.onopen = () => {
       setConnectionState('live');

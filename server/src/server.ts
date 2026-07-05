@@ -3,6 +3,7 @@ import { config } from './config/env';
 import { WebSocketServer } from 'ws';
 import http from 'http';
 import { getAnalytics } from './modules/analytics/analytics.service';
+import { findUser } from './modules/users/users.repository';
 
 const server = http.createServer(app);
 
@@ -25,7 +26,26 @@ export async function broadcastLeaderboard() {
   });
 }
 
-wss.on('connection', async (socket) => {
+wss.on('connection', async (socket, req) => {
+  const url = new URL(req.url ?? '', 'http://localhost');
+  const apiKey = url.searchParams.get('apiKey');
+
+  const user = await findUser({
+    apiKey: apiKey ?? '',
+  });
+  if (!user) {
+    socket.close(1008, 'unauthorized');
+    return;
+  }
+  if (user.tier === 'HOBBY') {
+    socket.send(
+      JSON.stringify({
+        event: 'error',
+        message: 'Live leaderboard requires enterprise plan',
+      }),
+    );
+    socket.close(1008, 'Forbidden');
+  }
   socket.send(
     JSON.stringify({
       type: 'info',
