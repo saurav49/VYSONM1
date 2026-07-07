@@ -21,7 +21,7 @@ import {
   flushRedirectStatsQueue,
   options,
   sleep,
-  imageProcessingWorker,
+  retryQueueWorker,
 } from './utils/util';
 import cron from 'node-cron';
 
@@ -119,6 +119,15 @@ cron.schedule('*/5 * * * *', async () => {
   console.log(`Running cron (${new Date().toISOString()})`);
 
   await flushRedirectStatsQueue();
+
+  console.log('---------------------');
+});
+
+cron.schedule('*/10 * * * *', async () => {
+  console.log('---------------------');
+  console.log(`Running cron (${new Date().toISOString()}) for retry queue`);
+
+  await retryQueueWorker();
 
   console.log('---------------------');
 });

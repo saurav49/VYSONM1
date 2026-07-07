@@ -7,6 +7,7 @@ import fs from 'fs/promises';
 import {
   FIFO_QUEUE_KEY,
   MAX_CACHE_SIZE,
+  RETRY_QUEUE,
   SSE_CLIENTS,
   TASK_QUEUE,
   TaskQueueTask,
@@ -152,7 +153,10 @@ function isImageUploadTask(
 }
 async function flushRedirectStatsQueue() {
   const d: Record<string, number> = {};
-
+  const incrementClicksQueue: Array<{
+    shortCode: string;
+    clicks: number;
+  }> = [];
   const remainingQueue = [];
 
   for (const task of TASK_QUEUE) {
@@ -166,18 +170,51 @@ async function flushRedirectStatsQueue() {
     }
   }
 
-  TASK_QUEUE.length = 0;
-  TASK_QUEUE.push(...remainingQueue);
-
-  const promises = Object.entries(d).map(([shortCode, clicks]) => {
-    return incrementRedirectStats({
+  Object.entries(d).forEach(([shortCode, clicks]) => {
+    incrementClicksQueue.push({
       shortCode,
-      clicks: { increment: clicks },
+      clicks,
+    });
+  });
+
+  const promises = incrementClicksQueue.map((d) => {
+    return incrementRedirectStats({
+      shortCode: d.shortCode,
+      clicks: {
+        increment: d.clicks,
+      },
     });
   });
 
   try {
-    await Promise.all(promises);
+    const responses = await Promise.allSettled(promises);
+    responses.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const failedTask = incrementClicksQueue[index];
+        for (let i = 0; i < failedTask.clicks; i++) {
+          RETRY_QUEUE.push({
+            event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+            data: {
+              shortCode: failedTask.shortCode,
+            },
+          });
+        }
+      }
+    });
+
+    console.log('Increment stats task completed');
+  } catch (e) {
+    console.error(e);
+    console.error('Increment stats failed');
+  }
+
+  TASK_QUEUE.length = 0;
+  TASK_QUEUE.push(...remainingQueue);
+
+  await sendWebhookDataHandler();
+}
+async function sendWebhookDataHandler() {
+  try {
     const analytics = await getAnalytics();
     await fetch(process.env.ANALYTICS_WEBHOOK_URL!, {
       method: 'POST',
@@ -191,11 +228,9 @@ async function flushRedirectStatsQueue() {
         sentAt: new Date().toISOString(),
       }),
     });
-
-    console.log('Increment stats task completed');
   } catch (e) {
     console.error(e);
-    console.error('Increment stats failed');
+    console.error('Webhook update failed');
   }
 }
 async function logUpload() {
@@ -231,7 +266,90 @@ async function imageProcessingWorker(workerName: string) {
   } catch (e) {
     console.error(`Thumbnail task failed for user ${task.data.id}`);
     console.error(e);
+    RETRY_QUEUE.push(task);
   }
+}
+async function retryQueueWorker() {
+  const d: Record<string, number> = {};
+  const failedIncrementTask: Array<{
+    shortCode: string;
+    clicks: number;
+  }> = [];
+  const remainingQueue = [];
+
+  for (const task of RETRY_QUEUE) {
+    if (task.event === TaskQueueAction.INCREMENT_REDIRECT_STATS) {
+      d[task.data.shortCode] = (d[task.data.shortCode] || 0) + 1;
+    } else {
+      remainingQueue.push(task);
+    }
+  }
+
+  Object.entries(d).forEach(([shortCode, clicks]) =>
+    failedIncrementTask.push({
+      shortCode,
+      clicks,
+    }),
+  );
+
+  const promises = failedIncrementTask.map((d) => {
+    return incrementRedirectStats({
+      shortCode: d.shortCode,
+      clicks: {
+        increment: d.clicks,
+      },
+    });
+  });
+
+  try {
+    const responses = await Promise.allSettled(promises);
+    responses.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const failedItem = failedIncrementTask[index];
+        for (let i = 0; i < failedItem.clicks; i++) {
+          RETRY_QUEUE.push({
+            event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+            data: {
+              shortCode: failedItem.shortCode,
+            },
+          });
+        }
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    console.error('Increment stats failed');
+  }
+
+  const reqdIndex = remainingQueue.findIndex(isImageUploadTask);
+  if (reqdIndex === -1) {
+    console.log('No queued tasks.');
+    console.log('---------------------');
+    return;
+  }
+  const [task] = remainingQueue.splice(reqdIndex, 1);
+
+  if (!task) {
+    console.log('No queued tasks.');
+    console.log('---------------------');
+    return;
+  }
+
+  if (!isImageUploadTask(task)) {
+    return;
+  }
+
+  try {
+    console.log(`Picked thumbnail task for user ${task.data.id}`);
+    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
+    console.log(`Thumbnail task completed for user ${task.data.id}`);
+  } catch (e) {
+    console.error(`Thumbnail task failed for user ${task.data.id}`);
+    console.error(e);
+  }
+
+  remainingQueue.length = 0;
+  RETRY_QUEUE.push(...remainingQueue);
 }
 const SUBSCRIBERS = {
   [TaskQueueAction.IMAGE_UPLOAD]: [generateThumbnail, logUpload, notifyAdmin],
@@ -267,4 +385,5 @@ export {
   notifyAdmin,
   sendSse,
   broadcastSSELeaderboard,
+  retryQueueWorker,
 };

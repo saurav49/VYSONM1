@@ -29,6 +29,7 @@ type IncrementStatsQueueTask = {
 type TaskQueueTask = ImageUploadQueueTask | IncrementStatsQueueTask;
 
 const TASK_QUEUE: TaskQueueTask[] = [];
+const RETRY_QUEUE: TaskQueueTask[] = [];
 
 const SSE_CLIENTS = new Set<Response>();
 
@@ -39,5 +40,6 @@ export {
   FIFO_QUEUE_KEY,
   MAX_CACHE_SIZE,
   SSE_CLIENTS,
+  RETRY_QUEUE,
 };
 export type { TaskQueueTask };
