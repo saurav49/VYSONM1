@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { io } from 'socket.io-client';
+// import { io } from 'socket.io-client';
 import type { ConnectionState, LeaderboardPayload } from './shared/types';
 import { compactUrl, formatDate } from './shared/utils';
 import { LeaderboardPanel } from './components/LeaderboardPanel';
 import { UrlRow } from './components/UrlRow';
 
-const API_KEY =
-  '93348c22d930a0b9f8091661b0930a34eb2dd19b2e713396cc85b2f2d7c7ee01';
-const SOCKET_URL = 'http://localhost:3000';
+// const API_KEY =
+//   '93348c22d930a0b9f8091661b0930a34eb2dd19b2e713396cc85b2f2d7c7ee01';
+// const SOCKET_URL = 'http://localhost:3000';
+const SSE_URL = 'http://localhost:3000/api/v1/leaderboard/events';
 
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardPayload>({});
@@ -15,6 +16,7 @@ const Leaderboard = () => {
     useState<ConnectionState>('connecting');
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
+  // PART 1 : WEBSOCKET
   // useEffect(() => {
   //   const socket = new WebSocket(
   //     `ws://localhost:3000/ws/leaderboard?apiKey=${API_KEY}`,
@@ -48,33 +50,55 @@ const Leaderboard = () => {
   //   };
   // }, []);
 
+  // PART 2 : SOCKET IO
+  // useEffect(() => {
+  //   const socket = io(SOCKET_URL, {
+  //     auth: {
+  //       apiKey: API_KEY,
+  //     },
+  //   });
+
+  //   socket.on('connect', () => {
+  //     setConnectionState('live');
+  //     socket.emit('getLeaderboard');
+  //   });
+
+  //   socket.on('leaderboard_update', (data) => {
+  //     setLeaderboard(data);
+  //     setLastUpdatedAt(new Date());
+  //   });
+
+  //   socket.on('disconnect', () => {
+  //     setConnectionState('disconnected');
+  //   });
+
+  //   socket.on('connect_error', () => {
+  //     setConnectionState('error');
+  //   });
+
+  //   return () => {
+  //     socket.disconnect();
+  //   };
+  // }, []);
+
+  // PART 3 : SSE
   useEffect(() => {
-    const socket = io(SOCKET_URL, {
-      auth: {
-        apiKey: API_KEY,
-      },
-    });
+    const source = new EventSource(SSE_URL);
 
-    socket.on('connect', () => {
+    source.addEventListener('open', () => {
       setConnectionState('live');
-      socket.emit('getLeaderboard');
     });
-
-    socket.on('leaderboard_update', (data) => {
+    source.addEventListener('leaderboard_update', (event) => {
+      const data = JSON.parse(event.data);
       setLeaderboard(data);
       setLastUpdatedAt(new Date());
     });
 
-    socket.on('disconnect', () => {
-      setConnectionState('disconnected');
-    });
-
-    socket.on('connect_error', () => {
+    source.addEventListener('error', () => {
       setConnectionState('error');
     });
-
     return () => {
-      socket.disconnect();
+      source.close();
     };
   }, []);
 

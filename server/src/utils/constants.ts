@@ -1,3 +1,4 @@
+import { Response } from 'express';
 import { TaskQueueAction } from './enums';
 
 const PAGE_SIZE = 10;
@@ -29,11 +30,14 @@ type TaskQueueTask = ImageUploadQueueTask | IncrementStatsQueueTask;
 
 const TASK_QUEUE: TaskQueueTask[] = [];
 
+const SSE_CLIENTS = new Set<Response>();
+
 export {
   PAGE_SIZE,
   ALLOWED_FILE_TYPE,
   TASK_QUEUE,
   FIFO_QUEUE_KEY,
   MAX_CACHE_SIZE,
+  SSE_CLIENTS,
 };
 export type { TaskQueueTask };

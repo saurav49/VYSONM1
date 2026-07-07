@@ -7,12 +7,14 @@ import fs from 'fs/promises';
 import {
   FIFO_QUEUE_KEY,
   MAX_CACHE_SIZE,
+  SSE_CLIENTS,
   TASK_QUEUE,
   TaskQueueTask,
 } from './constants';
 import { TaskQueueAction } from './enums';
 import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 import { getAnalytics } from '../modules/analytics/analytics.service';
+import { Response } from 'express';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -234,6 +236,16 @@ async function imageProcessingWorker(workerName: string) {
 const SUBSCRIBERS = {
   [TaskQueueAction.IMAGE_UPLOAD]: [generateThumbnail, logUpload, notifyAdmin],
 };
+function sendSse(res: Response, event: string, data: unknown) {
+  res.write(`event: ${event}\n`);
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+async function broadcastSSELeaderboard() {
+  const leaderboard = await getAnalytics();
+  for (const client of SSE_CLIENTS) {
+    sendSse(client, 'leaderboard_update', leaderboard);
+  }
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -253,4 +265,6 @@ export {
   SUBSCRIBERS,
   logUpload,
   notifyAdmin,
+  sendSse,
+  broadcastSSELeaderboard,
 };

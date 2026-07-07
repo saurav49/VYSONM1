@@ -10,7 +10,7 @@ import {
   remove,
   update,
 } from './short-codes.service';
-import { retryLogic } from '../../utils/util';
+import { broadcastSSELeaderboard, retryLogic } from '../../utils/util';
 import { broadcastLeaderboard } from '../../server';
 
 function getAuthenticatedUser(req: Request) {
@@ -104,6 +104,7 @@ async function redirectShortCode(
       password: req.query.password,
     });
     void broadcastLeaderboard().catch((e) => console.error(e));
+    void broadcastSSELeaderboard().catch((e) => console.error(e));
     return res.redirect(originalUrl);
   } catch (error) {
     return next(error);
