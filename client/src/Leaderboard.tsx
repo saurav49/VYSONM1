@@ -1,55 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import { io } from 'socket.io-client';
+import type { ConnectionState, LeaderboardPayload } from './shared/types';
+import { compactUrl, formatDate } from './shared/utils';
+import { LeaderboardPanel } from './components/LeaderboardPanel';
+import { UrlRow } from './components/UrlRow';
+
 const API_KEY =
   '93348c22d930a0b9f8091661b0930a34eb2dd19b2e713396cc85b2f2d7c7ee01';
-type ShortUrl = {
-  id?: number;
-  originalUrl?: string;
-  shortCode?: string;
-  clicks?: number;
-  createdAt?: string;
-  lastAccessedAt?: string | null;
-};
-
-type ShortenCount = {
-  originalUrl?: string;
-  _count?: {
-    originalUrl?: number;
-  };
-};
-
-type LeaderboardPayload = {
-  tenLatestUrlShortened?: ShortUrl[];
-  tenMostPopularUrl?: ShortUrl[];
-  tenMostShortenUrl?: ShortenCount[];
-};
-
-type ConnectionState = 'connecting' | 'live' | 'disconnected' | 'error';
-
-const formatDate = (value?: string | null) => {
-  if (!value) return 'No activity yet';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'No activity yet';
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-};
-
-const compactUrl = (url?: string) => {
-  if (!url) return 'Untitled destination';
-
-  try {
-    const parsed = new URL(url);
-    return `${parsed.hostname}${parsed.pathname === '/' ? '' : parsed.pathname}`;
-  } catch {
-    return url;
-  }
-};
+const SOCKET_URL = 'http://localhost:3000';
 
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardPayload>({});
@@ -57,36 +15,66 @@ const Leaderboard = () => {
     useState<ConnectionState>('connecting');
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
+  // useEffect(() => {
+  //   const socket = new WebSocket(
+  //     `ws://localhost:3000/ws/leaderboard?apiKey=${API_KEY}`,
+  //   );
+
+  //   socket.onopen = () => {
+  //     setConnectionState('live');
+  //   };
+
+  //   socket.onmessage = (event) => {
+  //     const message = JSON.parse(event.data);
+
+  //     if (message.event === 'leaderboard_update') {
+  //       setLeaderboard(message.data);
+  //       setLastUpdatedAt(new Date());
+  //     }
+  //   };
+
+  //   socket.onerror = () => {
+  //     setConnectionState('error');
+  //   };
+
+  //   socket.onclose = () => {
+  //     setConnectionState((state) =>
+  //       state === 'error' ? 'error' : 'disconnected',
+  //     );
+  //   };
+
+  //   return () => {
+  //     socket.close();
+  //   };
+  // }, []);
+
   useEffect(() => {
-    const socket = new WebSocket(
-      `ws://localhost:3000/ws/leaderboard?apiKey=${API_KEY}`,
-    );
+    const socket = io(SOCKET_URL, {
+      auth: {
+        apiKey: API_KEY,
+      },
+    });
 
-    socket.onopen = () => {
+    socket.on('connect', () => {
       setConnectionState('live');
-    };
+      socket.emit('getLeaderboard');
+    });
 
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+    socket.on('leaderboard_update', (data) => {
+      setLeaderboard(data);
+      setLastUpdatedAt(new Date());
+    });
 
-      if (message.event === 'leaderboard_update') {
-        setLeaderboard(message.data);
-        setLastUpdatedAt(new Date());
-      }
-    };
+    socket.on('disconnect', () => {
+      setConnectionState('disconnected');
+    });
 
-    socket.onerror = () => {
+    socket.on('connect_error', () => {
       setConnectionState('error');
-    };
-
-    socket.onclose = () => {
-      setConnectionState((state) =>
-        state === 'error' ? 'error' : 'disconnected',
-      );
-    };
+    });
 
     return () => {
-      socket.close();
+      socket.disconnect();
     };
   }, []);
 
@@ -198,58 +186,5 @@ const Leaderboard = () => {
     </main>
   );
 };
-
-function LeaderboardPanel({
-  title,
-  subtitle,
-  emptyText,
-  wide,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  emptyText: string;
-  wide?: boolean;
-  children: ReactNode[];
-}) {
-  return (
-    <article className={`leaderboard-panel ${wide ? 'wide' : ''}`}>
-      <header>
-        <div>
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
-      </header>
-      <div className='leaderboard-list'>
-        {children.length > 0 ? (
-          children
-        ) : (
-          <p className='empty-state'>{emptyText}</p>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function UrlRow({
-  item,
-  rank,
-  accent,
-}: {
-  item: ShortUrl;
-  rank: number;
-  accent: string;
-}) {
-  return (
-    <div className='leaderboard-row'>
-      <div className='rank'>{rank}</div>
-      <div className='row-main'>
-        <strong>{compactUrl(item.originalUrl)}</strong>
-        <span>/{item.shortCode ?? 'pending-code'}</span>
-      </div>
-      <div className='row-accent'>{accent}</div>
-    </div>
-  );
-}
 
 export default Leaderboard;
