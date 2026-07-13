@@ -346,9 +346,10 @@ async function retryQueueWorker() {
   } catch (e) {
     console.error(`Thumbnail task failed for user ${task.data.id}`);
     console.error(e);
+    remainingQueue.push(task);
   }
 
-  remainingQueue.length = 0;
+  RETRY_QUEUE.length = 0;
   RETRY_QUEUE.push(...remainingQueue);
 }
 const SUBSCRIBERS = {
