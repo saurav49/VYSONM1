@@ -35,7 +35,7 @@ import {
   softDeleteShortCodeForUser,
   updateShortCodeForUser,
 } from './short-codes.repository';
-import { TASK_QUEUE } from '../../utils/constants';
+import { MAX_TASK_ATTEMPTS, TASK_QUEUE } from '../../utils/constants';
 import { TaskQueueAction } from '../../utils/enums';
 
 const bcrypt = require('bcrypt');
@@ -242,6 +242,9 @@ async function redirect({
     TASK_QUEUE.push({
       event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
       data: { shortCode: code as string },
+      attempts: 0,
+      maxAttempts: MAX_TASK_ATTEMPTS,
+      nextAttemptAt: 0,
     });
     const incrementStatsQueue = TASK_QUEUE.filter(
       (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
@@ -286,6 +289,9 @@ async function redirect({
     data: {
       shortCode: code as string,
     },
+    attempts: 0,
+    maxAttempts: MAX_TASK_ATTEMPTS,
+    nextAttemptAt: 0,
   });
   const incrementStatsQueue = TASK_QUEUE.filter(
     (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,

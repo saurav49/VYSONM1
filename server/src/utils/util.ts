@@ -5,6 +5,8 @@ import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
 import {
+  BASE_RETRY_DELAY_MS,
+  DEAD_LETTER_QUEUE,
   FIFO_QUEUE_KEY,
   MAX_CACHE_SIZE,
   RETRY_QUEUE,
@@ -151,6 +153,20 @@ function isImageUploadTask(
 ): task is Extract<TaskQueueTask, { event: TaskQueueAction.IMAGE_UPLOAD }> {
   return task.event === TaskQueueAction.IMAGE_UPLOAD;
 }
+function retryAt(attempts: number) {
+  const delay = Math.min(
+    BASE_RETRY_DELAY_MS * 2 ** Math.max(attempts - 1, 0),
+    30 * 60_000,
+  );
+  return Date.now() + delay + jitter();
+}
+function retryOrDeadLetter(task: TaskQueueTask) {
+  if (task.attempts >= task.maxAttempts) {
+    DEAD_LETTER_QUEUE.push(task);
+    return;
+  }
+  RETRY_QUEUE.push({ ...task, nextAttemptAt: retryAt(task.attempts) });
+}
 async function flushRedirectStatsQueue() {
   const d: Record<string, number> = {};
   const incrementClicksQueue: Array<{
@@ -158,15 +174,35 @@ async function flushRedirectStatsQueue() {
     clicks: number;
   }> = [];
   const remainingQueue = [];
+  const incrementTasksByCode: Record<
+    string,
+    Extract<
+      TaskQueueTask,
+      { event: TaskQueueAction.INCREMENT_REDIRECT_STATS }
+    >[]
+  > = {};
 
   for (const task of TASK_QUEUE) {
     if (
       task.event === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
       task.data.shortCode
     ) {
+      if (task.attempts >= task.maxAttempts) {
+        DEAD_LETTER_QUEUE.push(task);
+        continue;
+      }
+      const attemptedTask = { ...task, attempts: task.attempts + 1 };
       d[task.data.shortCode] = (d[task.data.shortCode] || 0) + 1;
+      if (incrementTasksByCode[task.data.shortCode] === null) {
+        incrementTasksByCode[task.data.shortCode] = [];
+      }
+      incrementTasksByCode[task.data.shortCode].push(attemptedTask);
     } else {
-      remainingQueue.push(task);
+      if (task.attempts >= task.maxAttempts) {
+        DEAD_LETTER_QUEUE.push(task);
+      } else {
+        remainingQueue.push(task);
+      }
     }
   }
 
@@ -190,14 +226,10 @@ async function flushRedirectStatsQueue() {
     const responses = await Promise.allSettled(promises);
     responses.forEach((result, index) => {
       if (result.status === 'rejected') {
-        const failedTask = incrementClicksQueue[index];
-        for (let i = 0; i < failedTask.clicks; i++) {
-          RETRY_QUEUE.push({
-            event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-            data: {
-              shortCode: failedTask.shortCode,
-            },
-          });
+        for (const task of incrementTasksByCode[
+          incrementClicksQueue[index].shortCode
+        ] ?? []) {
+          retryOrDeadLetter(task);
         }
       }
     });
@@ -255,102 +287,87 @@ async function imageProcessingWorker(workerName: string) {
   if (!isImageUploadTask(task)) {
     return;
   }
+  if (task.attempts >= task.maxAttempts) {
+    DEAD_LETTER_QUEUE.push(task);
+    return;
+  }
+  const attemptedTask = { ...task, attempts: task.attempts + 1 };
   try {
     console.log(
       `Picked thumbnail task for user ${task.data.id} by ${workerName}`,
     );
-    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
+    await Promise.all(
+      SUBSCRIBERS[task.event].map((t) => t(attemptedTask.data)),
+    );
     console.log(
       `Thumbnail task completed for user ${task.data.id} by ${workerName}`,
     );
   } catch (e) {
     console.error(`Thumbnail task failed for user ${task.data.id}`);
     console.error(e);
-    RETRY_QUEUE.push(task);
+    retryOrDeadLetter(attemptedTask);
   }
 }
+function jitter() {
+  return Math.random() * 5_000;
+}
 async function retryQueueWorker() {
-  const d: Record<string, number> = {};
-  const failedIncrementTask: Array<{
-    shortCode: string;
-    clicks: number;
-  }> = [];
-  const remainingQueue = [];
+  const now = Date.now();
+  const dueTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt <= now);
+  const waitingTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt > now);
+  RETRY_QUEUE.length = 0;
+  RETRY_QUEUE.push(...waitingTasks);
 
-  for (const task of RETRY_QUEUE) {
-    if (task.event === TaskQueueAction.INCREMENT_REDIRECT_STATS) {
-      d[task.data.shortCode] = (d[task.data.shortCode] || 0) + 1;
+  const statsByCode: Record<
+    string,
+    Extract<
+      TaskQueueTask,
+      { event: TaskQueueAction.INCREMENT_REDIRECT_STATS }
+    >[]
+  > = {};
+  const imageTasks: Extract<
+    TaskQueueTask,
+    { event: TaskQueueAction.IMAGE_UPLOAD }
+  >[] = [];
+
+  for (const task of dueTasks) {
+    if (task.attempts >= task.maxAttempts) {
+      DEAD_LETTER_QUEUE.push(task);
+    } else if (isImageUploadTask(task)) {
+      imageTasks.push({ ...task, attempts: task.attempts + 1 });
     } else {
-      remainingQueue.push(task);
+      const attemptedTask = { ...task, attempts: task.attempts + 1 };
+      statsByCode[task.data.shortCode] = statsByCode[task.data.shortCode] ?? [];
+      statsByCode[task.data.shortCode].push(attemptedTask);
     }
   }
 
-  Object.entries(d).forEach(([shortCode, clicks]) =>
-    failedIncrementTask.push({
-      shortCode,
-      clicks,
+  await Promise.all(
+    Object.entries(statsByCode).map(async ([shortCode, tasks]) => {
+      try {
+        await incrementRedirectStats({
+          shortCode,
+          clicks: { increment: tasks.length },
+        });
+      } catch (e) {
+        console.error(`Increment stats retry failed for ${shortCode}`);
+        console.error(e);
+        tasks.forEach(retryOrDeadLetter);
+      }
     }),
   );
 
-  const promises = failedIncrementTask.map((d) => {
-    return incrementRedirectStats({
-      shortCode: d.shortCode,
-      clicks: {
-        increment: d.clicks,
-      },
-    });
-  });
-
-  try {
-    const responses = await Promise.allSettled(promises);
-    responses.forEach((result, index) => {
-      if (result.status === 'rejected') {
-        const failedItem = failedIncrementTask[index];
-        for (let i = 0; i < failedItem.clicks; i++) {
-          RETRY_QUEUE.push({
-            event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-            data: {
-              shortCode: failedItem.shortCode,
-            },
-          });
-        }
+  await Promise.all(
+    imageTasks.map(async (task) => {
+      try {
+        await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
+      } catch (e) {
+        console.error(`Thumbnail retry failed for user ${task.data.id}`);
+        console.error(e);
+        retryOrDeadLetter(task);
       }
-    });
-  } catch (e) {
-    console.error(e);
-    console.error('Increment stats failed');
-  }
-
-  const reqdIndex = remainingQueue.findIndex(isImageUploadTask);
-  if (reqdIndex === -1) {
-    console.log('No queued tasks.');
-    console.log('---------------------');
-    return;
-  }
-  const [task] = remainingQueue.splice(reqdIndex, 1);
-
-  if (!task) {
-    console.log('No queued tasks.');
-    console.log('---------------------');
-    return;
-  }
-
-  if (!isImageUploadTask(task)) {
-    return;
-  }
-
-  try {
-    console.log(`Picked thumbnail task for user ${task.data.id}`);
-    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
-    console.log(`Thumbnail task completed for user ${task.data.id}`);
-  } catch (e) {
-    console.error(`Thumbnail task failed for user ${task.data.id}`);
-    console.error(e);
-    remainingQueue.push(task);
-  }
-
-  RETRY_QUEUE.length = 0;
-  RETRY_QUEUE.push(...remainingQueue);
+    }),
+  );
 }
 const SUBSCRIBERS = {
   [TaskQueueAction.IMAGE_UPLOAD]: [generateThumbnail, logUpload, notifyAdmin],

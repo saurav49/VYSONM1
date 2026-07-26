@@ -5,6 +5,10 @@ const PAGE_SIZE = 10;
 const ALLOWED_FILE_TYPE = ['image/jpeg', 'image/png', 'image/webp'];
 const FIFO_QUEUE_KEY = 'cache:fifo:shortCodes';
 const MAX_CACHE_SIZE = 1000;
+// Five retries after the initial execution: 1 initial attempt + 5 retries.
+const MAX_RETRY_ATTEMPTS = 5;
+const MAX_TASK_ATTEMPTS = MAX_RETRY_ATTEMPTS + 1;
+const BASE_RETRY_DELAY_MS = 60_000;
 
 type GenerateThumbnailTask = {
   imagePath: string;
@@ -19,17 +23,24 @@ type IncrementStatsTask = {
 type ImageUploadQueueTask = {
   event: TaskQueueAction.IMAGE_UPLOAD;
   data: GenerateThumbnailTask;
+  attempts: number;
+  maxAttempts: number;
+  nextAttemptAt: number;
 };
 
 type IncrementStatsQueueTask = {
   event: TaskQueueAction.INCREMENT_REDIRECT_STATS;
   data: IncrementStatsTask;
+  attempts: number;
+  maxAttempts: number;
+  nextAttemptAt: number;
 };
 
 type TaskQueueTask = ImageUploadQueueTask | IncrementStatsQueueTask;
 
 const TASK_QUEUE: TaskQueueTask[] = [];
 const RETRY_QUEUE: TaskQueueTask[] = [];
+const DEAD_LETTER_QUEUE: TaskQueueTask[] = [];
 
 const SSE_CLIENTS = new Set<Response>();
 
@@ -39,7 +50,11 @@ export {
   TASK_QUEUE,
   FIFO_QUEUE_KEY,
   MAX_CACHE_SIZE,
+  MAX_TASK_ATTEMPTS,
+  MAX_RETRY_ATTEMPTS,
   SSE_CLIENTS,
   RETRY_QUEUE,
+  DEAD_LETTER_QUEUE,
+  BASE_RETRY_DELAY_MS,
 };
-export type { TaskQueueTask };
+export type { TaskQueueTask, IncrementStatsTask };
