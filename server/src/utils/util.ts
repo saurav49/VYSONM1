@@ -168,11 +168,6 @@ function retryOrDeadLetter(task: TaskQueueTask) {
   RETRY_QUEUE.push({ ...task, nextAttemptAt: retryAt(task.attempts) });
 }
 async function flushRedirectStatsQueue() {
-  const d: Record<string, number> = {};
-  const incrementClicksQueue: Array<{
-    shortCode: string;
-    clicks: number;
-  }> = [];
   const remainingQueue = [];
   const incrementTasksByCode: Record<
     string,
@@ -192,10 +187,7 @@ async function flushRedirectStatsQueue() {
         continue;
       }
       const attemptedTask = { ...task, attempts: task.attempts + 1 };
-      d[task.data.shortCode] = (d[task.data.shortCode] || 0) + 1;
-      if (incrementTasksByCode[task.data.shortCode] === null) {
-        incrementTasksByCode[task.data.shortCode] = [];
-      }
+      incrementTasksByCode[task.data.shortCode] ??= [];
       incrementTasksByCode[task.data.shortCode].push(attemptedTask);
     } else {
       if (task.attempts >= task.maxAttempts) {
@@ -206,18 +198,12 @@ async function flushRedirectStatsQueue() {
     }
   }
 
-  Object.entries(d).forEach(([shortCode, clicks]) => {
-    incrementClicksQueue.push({
-      shortCode,
-      clicks,
-    });
-  });
-
-  const promises = incrementClicksQueue.map((d) => {
+  const incrementTaskGroups = Object.entries(incrementTasksByCode);
+  const promises = incrementTaskGroups.map(([shortCode, tasks]) => {
     return incrementRedirectStats({
-      shortCode: d.shortCode,
+      shortCode,
       clicks: {
-        increment: d.clicks,
+        increment: tasks.length,
       },
     });
   });
@@ -226,9 +212,7 @@ async function flushRedirectStatsQueue() {
     const responses = await Promise.allSettled(promises);
     responses.forEach((result, index) => {
       if (result.status === 'rejected') {
-        for (const task of incrementTasksByCode[
-          incrementClicksQueue[index].shortCode
-        ] ?? []) {
+        for (const task of incrementTaskGroups[index][1]) {
           retryOrDeadLetter(task);
         }
       }
