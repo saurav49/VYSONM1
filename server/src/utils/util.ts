@@ -168,65 +168,8 @@ function retryOrDeadLetter(task: TaskQueueTask) {
   RETRY_QUEUE.push({ ...task, nextAttemptAt: retryAt(task.attempts) });
 }
 async function flushRedirectStatsQueue() {
-  const remainingQueue = [];
-  const incrementTasksByCode: Record<
-    string,
-    Extract<
-      TaskQueueTask,
-      { event: TaskQueueAction.INCREMENT_REDIRECT_STATS }
-    >[]
-  > = {};
-
-  for (const task of TASK_QUEUE) {
-    if (
-      task.event === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
-      task.data.shortCode
-    ) {
-      if (task.attempts >= task.maxAttempts) {
-        DEAD_LETTER_QUEUE.push(task);
-        continue;
-      }
-      const attemptedTask = { ...task, attempts: task.attempts + 1 };
-      incrementTasksByCode[task.data.shortCode] ??= [];
-      incrementTasksByCode[task.data.shortCode].push(attemptedTask);
-    } else {
-      if (task.attempts >= task.maxAttempts) {
-        DEAD_LETTER_QUEUE.push(task);
-      } else {
-        remainingQueue.push(task);
-      }
-    }
-  }
-
-  const incrementTaskGroups = Object.entries(incrementTasksByCode);
-  const promises = incrementTaskGroups.map(([shortCode, tasks]) => {
-    return incrementRedirectStats({
-      shortCode,
-      clicks: {
-        increment: tasks.length,
-      },
-    });
-  });
-
-  try {
-    const responses = await Promise.allSettled(promises);
-    responses.forEach((result, index) => {
-      if (result.status === 'rejected') {
-        for (const task of incrementTaskGroups[index][1]) {
-          retryOrDeadLetter(task);
-        }
-      }
-    });
-
-    console.log('Increment stats task completed');
-  } catch (e) {
-    console.error(e);
-    console.error('Increment stats failed');
-  }
-
-  TASK_QUEUE.length = 0;
-  TASK_QUEUE.push(...remainingQueue);
-
+  const tasks = TASK_QUEUE.splice(0);
+  await processTaskBatch(tasks);
   await sendWebhookDataHandler();
 }
 async function sendWebhookDataHandler() {
@@ -301,7 +244,9 @@ async function retryQueueWorker() {
   const waitingTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt > now);
   RETRY_QUEUE.length = 0;
   RETRY_QUEUE.push(...waitingTasks);
-
+  await processTaskBatch(dueTasks);
+}
+async function processTaskBatch(tasks: TaskQueueTask[]) {
   const statsByCode: Record<
     string,
     Extract<
@@ -314,7 +259,7 @@ async function retryQueueWorker() {
     { event: TaskQueueAction.IMAGE_UPLOAD }
   >[] = [];
 
-  for (const task of dueTasks) {
+  for (const task of tasks) {
     if (task.attempts >= task.maxAttempts) {
       DEAD_LETTER_QUEUE.push(task);
     } else if (isImageUploadTask(task)) {
@@ -344,7 +289,20 @@ async function retryQueueWorker() {
   await Promise.all(
     imageTasks.map(async (task) => {
       try {
-        await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
+        const responses = await Promise.allSettled(
+          SUBSCRIBERS[task.event].map((t) => t(task.data)),
+        );
+        const failedIndex = responses.findIndex(
+          (result) => result.status === 'rejected',
+        );
+        if (failedIndex !== -1) {
+          const failedResult = responses[failedIndex];
+          console.error(
+            `Subscriber ${failedIndex} failed for user ${task.data.id}`,
+            failedResult.status === 'rejected' ? failedResult.reason : undefined,
+          );
+          retryOrDeadLetter(task);
+        }
       } catch (e) {
         console.error(`Thumbnail retry failed for user ${task.data.id}`);
         console.error(e);
