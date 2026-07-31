@@ -1,4 +1,5 @@
 import { prisma } from '../../db/prisma';
+import { IncrementStatsQueueTask } from '../../utils/constants';
 
 async function findByShortCode(shortCode: string) {
   return prisma.urlShortener.findUnique({
@@ -71,20 +72,30 @@ async function softDeleteShortCodeForUser({
 }
 
 async function incrementRedirectStats({
+  tasks,
   shortCode,
   clicks,
 }: {
+  tasks: IncrementStatsQueueTask[];
   shortCode: string;
   clicks: number | { increment: number };
 }) {
-  return prisma.urlShortener.update({
-    where: {
-      shortCode,
-    },
-    data: {
-      clicks,
-      lastAccessedAt: new Date(),
-    },
+  return prisma.$transaction(async (tx) => {
+    const inserts = await tx.processedTask.createMany({
+      data: tasks.map((t) => ({ taskId: t.taskId, event: t.event })),
+      skipDuplicates: true,
+    });
+    if (inserts.count > 0) {
+      await tx.urlShortener.update({
+        where: {
+          shortCode,
+        },
+        data: {
+          clicks: { increment: inserts.count },
+          lastAccessedAt: new Date(),
+        },
+      });
+    }
   });
 }
 

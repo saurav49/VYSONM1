@@ -26,6 +26,8 @@ type ImageUploadQueueTask = {
   attempts: number;
   maxAttempts: number;
   nextAttemptAt: number;
+  subscriberIndex?: number;
+  taskId: string;
 };
 
 type IncrementStatsQueueTask = {
@@ -34,6 +36,7 @@ type IncrementStatsQueueTask = {
   attempts: number;
   maxAttempts: number;
   nextAttemptAt: number;
+  taskId: string;
 };
 
 type TaskQueueTask = ImageUploadQueueTask | IncrementStatsQueueTask;
@@ -57,4 +60,9 @@ export {
   DEAD_LETTER_QUEUE,
   BASE_RETRY_DELAY_MS,
 };
-export type { TaskQueueTask, IncrementStatsTask };
+export type {
+  TaskQueueTask,
+  IncrementStatsTask,
+  ImageUploadQueueTask,
+  IncrementStatsQueueTask,
+};

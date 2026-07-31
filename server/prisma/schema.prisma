@@ -54,3 +54,9 @@ model RequestLogging {
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
 }
+
+model ProcessedTask {
+  taskId        String    @id
+  processedAt   DateTime  @default(now())
+  event         String
+}

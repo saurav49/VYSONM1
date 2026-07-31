@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { UserModel } from '../../generated/prisma/models/User';
 import { HTTP_STATUS } from '../../shared/constants/httpStatus';
 import { AppError } from '../../shared/errors/AppError';
@@ -245,6 +245,7 @@ async function redirect({
       attempts: 0,
       maxAttempts: MAX_TASK_ATTEMPTS,
       nextAttemptAt: 0,
+      taskId: `${code}_${randomUUID()}`,
     });
     const incrementStatsQueue = TASK_QUEUE.filter(
       (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
@@ -292,6 +293,7 @@ async function redirect({
     attempts: 0,
     maxAttempts: MAX_TASK_ATTEMPTS,
     nextAttemptAt: 0,
+    taskId: `${code}_${randomUUID()}`,
   });
   const incrementStatsQueue = TASK_QUEUE.filter(
     (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,

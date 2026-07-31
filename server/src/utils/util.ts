@@ -1,6 +1,6 @@
 import { redis } from '../config/redis';
 const bcrypt = require('bcrypt');
-import crypto from 'crypto';
+import crypto, { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
@@ -8,6 +8,7 @@ import {
   BASE_RETRY_DELAY_MS,
   DEAD_LETTER_QUEUE,
   FIFO_QUEUE_KEY,
+  ImageUploadQueueTask,
   MAX_CACHE_SIZE,
   RETRY_QUEUE,
   SSE_CLIENTS,
@@ -115,11 +116,16 @@ const options = {
 async function sleep(timeInMs: number = 3000) {
   return new Promise((res) => setTimeout(res, timeInMs));
 }
-async function generateThumbnail(data: {
-  imagePath: string;
-  file: string;
-  id: number;
-}) {
+async function generateThumbnail(task: ImageUploadQueueTask) {
+  const data = task.data;
+  const response = await prisma.user.findUnique({
+    where: {
+      id: data.id,
+    },
+  });
+  if (response?.thumbnail) {
+    return response;
+  }
   const { default: sharp } = await import('sharp');
 
   console.log(`Generating thumbnail for user ${data.id}`);
@@ -129,13 +135,23 @@ async function generateThumbnail(data: {
     .jpeg({ quality: 90 })
     .toFile(data.imagePath);
 
-  await prisma.user.update({
-    where: {
-      id: data.id,
-    },
-    data: {
-      thumbnail: data.imagePath,
-    },
+  await prisma.$transaction(async (tx) => {
+    const inserts = await tx.processedTask.createMany({
+      data: {
+        taskId: task.taskId,
+        event: task.event,
+      },
+      skipDuplicates: true,
+    });
+    if (inserts.count === 0) return;
+    await tx.user.update({
+      where: {
+        id: data.id,
+      },
+      data: {
+        thumbnail: data.imagePath,
+      },
+    });
   });
 
   console.log(`Thumbnail saved for user ${data.id}: ${data.imagePath}`);
@@ -223,9 +239,7 @@ async function imageProcessingWorker(workerName: string) {
     console.log(
       `Picked thumbnail task for user ${task.data.id} by ${workerName}`,
     );
-    await Promise.all(
-      SUBSCRIBERS[task.event].map((t) => t(attemptedTask.data)),
-    );
+    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(attemptedTask)));
     console.log(
       `Thumbnail task completed for user ${task.data.id} by ${workerName}`,
     );
@@ -263,9 +277,20 @@ async function processTaskBatch(tasks: TaskQueueTask[]) {
     if (task.attempts >= task.maxAttempts) {
       DEAD_LETTER_QUEUE.push(task);
     } else if (isImageUploadTask(task)) {
-      imageTasks.push({ ...task, attempts: task.attempts + 1 });
+      if (!task.taskId) {
+        imageTasks.push({
+          ...task,
+          attempts: task.attempts + 1,
+          taskId: `${task.data.id}_${randomUUID()}`,
+        });
+      } else {
+        imageTasks.push({ ...task, attempts: task.attempts + 1 });
+      }
     } else {
-      const attemptedTask = { ...task, attempts: task.attempts + 1 };
+      const attemptedTask = {
+        ...task,
+        attempts: task.attempts + 1,
+      };
       statsByCode[task.data.shortCode] = statsByCode[task.data.shortCode] ?? [];
       statsByCode[task.data.shortCode].push(attemptedTask);
     }
@@ -275,6 +300,7 @@ async function processTaskBatch(tasks: TaskQueueTask[]) {
     Object.entries(statsByCode).map(async ([shortCode, tasks]) => {
       try {
         await incrementRedirectStats({
+          tasks,
           shortCode,
           clicks: { increment: tasks.length },
         });
@@ -289,20 +315,24 @@ async function processTaskBatch(tasks: TaskQueueTask[]) {
   await Promise.all(
     imageTasks.map(async (task) => {
       try {
+        const subscribers = SUBSCRIBERS[task.event];
+        const subscriberIndexes =
+          task.subscriberIndex === undefined
+            ? subscribers.map((_, index) => index)
+            : [task.subscriberIndex];
         const responses = await Promise.allSettled(
-          SUBSCRIBERS[task.event].map((t) => t(task.data)),
+          subscriberIndexes.map((index) => subscribers[index](task)),
         );
-        const failedIndex = responses.findIndex(
-          (result) => result.status === 'rejected',
-        );
-        if (failedIndex !== -1) {
-          const failedResult = responses[failedIndex];
-          console.error(
-            `Subscriber ${failedIndex} failed for user ${task.data.id}`,
-            failedResult.status === 'rejected' ? failedResult.reason : undefined,
-          );
-          retryOrDeadLetter(task);
-        }
+        responses.forEach((result, responseIndex) => {
+          if (result.status === 'rejected') {
+            const subscriberIndex = subscriberIndexes[responseIndex];
+            console.error(
+              `Subscriber ${subscriberIndex} failed for user ${task.data.id}`,
+              result.reason,
+            );
+            retryOrDeadLetter({ ...task, subscriberIndex });
+          }
+        });
       } catch (e) {
         console.error(`Thumbnail retry failed for user ${task.data.id}`);
         console.error(e);
