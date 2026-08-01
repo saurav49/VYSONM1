@@ -47,6 +47,11 @@ const DEAD_LETTER_QUEUE: TaskQueueTask[] = [];
 
 const SSE_CLIENTS = new Set<Response>();
 
+const REDIRECT_STATS = 'redirect-stats';
+const IMAGE_PROCESSING = 'image-processing';
+const NOTIFICATIONS = 'notifications';
+const DEAD_LETTER = 'dead-letter';
+
 export {
   PAGE_SIZE,
   ALLOWED_FILE_TYPE,
@@ -59,6 +64,10 @@ export {
   RETRY_QUEUE,
   DEAD_LETTER_QUEUE,
   BASE_RETRY_DELAY_MS,
+  REDIRECT_STATS,
+  IMAGE_PROCESSING,
+  NOTIFICATIONS,
+  DEAD_LETTER,
 };
 export type {
   TaskQueueTask,
