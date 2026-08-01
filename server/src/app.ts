@@ -22,6 +22,7 @@ import {
   options,
   sleep,
   retryQueueWorker,
+  deadLetterQueueWorker,
 } from './utils/util';
 import cron from 'node-cron';
 
@@ -128,6 +129,17 @@ cron.schedule('*/10 * * * *', async () => {
   console.log(`Running cron (${new Date().toISOString()}) for retry queue`);
 
   await retryQueueWorker();
+
+  console.log('---------------------');
+});
+
+cron.schedule('*/30 * * * *', async () => {
+  console.log('---------------------');
+  console.log(
+    `Running cron (${new Date().toISOString()}) for dead letter queue`,
+  );
+
+  await deadLetterQueueWorker();
 
   console.log('---------------------');
 });

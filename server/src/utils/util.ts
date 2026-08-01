@@ -1,4 +1,7 @@
 import { redis } from '../config/redis';
+import { Resend } from 'resend';
+import { config } from '../config/env';
+const resend = new Resend(config.RESEND_API_KEY);
 const bcrypt = require('bcrypt');
 import crypto, { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma';
@@ -354,6 +357,34 @@ async function broadcastSSELeaderboard() {
     sendSse(client, 'leaderboard_update', leaderboard);
   }
 }
+async function deadLetterQueueWorker() {
+  const tasks = DEAD_LETTER_QUEUE.splice(0);
+  const results = await Promise.allSettled(
+    tasks.map(async (task) => {
+      const { error } = await resend.emails.send({
+        from: 'DLQ Monitor <onboarding@resend.dev>',
+        to: [config.DLQ_ALERT_EMAIL!],
+        subject: `Dead-letter task ${task?.taskId}`,
+        html: `
+        <h2>Task moved to dead-letter queue</h2>
+        <p><strong>Task ID:</strong> ${task?.taskId}</p>
+        <p><strong>Event:</strong> ${task?.event}</p>
+        <p><strong>Attempts:</strong> ${task?.attempts}</p>
+        <pre>${JSON.stringify(task, null, 2)}</pre>
+      `,
+        headers: {
+          'Idempotency-Key': `dlq-alert:${task.taskId}`,
+        },
+      });
+      if (error) throw new Error(error.message);
+    }),
+  );
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      DEAD_LETTER_QUEUE.push(tasks[i]);
+    }
+  });
+}
 export {
   isValidEmail,
   isValidDateTime,
@@ -376,4 +407,5 @@ export {
   sendSse,
   broadcastSSELeaderboard,
   retryQueueWorker,
+  deadLetterQueueWorker,
 };
