@@ -19,13 +19,11 @@ import { swaggerSpec } from './swagger';
 import { limiter } from './config/limiter';
 import {
   flushRedirectStatsQueue,
-  generateThumbnail,
   options,
   sleep,
+  imageProcessingWorker,
 } from './utils/util';
 import cron from 'node-cron';
-import { TASK_QUEUE } from './utils/constants';
-import { TaskQueueAction } from './utils/enums';
 
 dotenv.config();
 
@@ -102,46 +100,19 @@ v2Routes.use(v2UsersRouter);
 // });
 
 // WITH QUEUE
-cron.schedule('* * * * *', async () => {
-  console.log('---------------------');
-  console.log(
-    `Running every minute cron job (${new Date().toDateString()}) ...`,
-  );
+// cron.schedule('* * * * *', async () => {
+//   console.log('---------------------');
+//   console.log(
+//     `Running every minute cron job (${new Date().toDateString()}) ...`,
+//   );
 
-  const remainingQueue = [];
+//   const w1 = imageProcessingWorker('w1');
+//   const w2 = imageProcessingWorker('w2');
 
-  for (const task of TASK_QUEUE) {
-    if (!task) {
-      console.log('No queued tasks.');
-      console.log('---------------------');
-      return;
-    }
+//   await Promise.all([w1, w2]);
 
-    if (task.type === TaskQueueAction.GENERATE_THUMBNAIL) {
-      try {
-        console.log(`Picked thumbnail task for user ${task.id}`);
-        if (task.imagePath && task.file && task.id) {
-          await generateThumbnail({
-            imagePath: task.imagePath,
-            file: task.file,
-            id: task.id,
-          });
-        }
-        console.log(`Thumbnail task completed for user ${task.id}`);
-      } catch (e) {
-        console.error(`Thumbnail task failed for user ${task.id}`);
-        console.error(e);
-      }
-    } else {
-      remainingQueue.push(task);
-    }
-  }
-
-  TASK_QUEUE.length = 0;
-  TASK_QUEUE.push(...remainingQueue);
-
-  console.log('---------------------');
-});
+//   console.log('---------------------');
+// });
 cron.schedule('*/5 * * * *', async () => {
   console.log('---------------------');
   console.log(`Running cron (${new Date().toISOString()})`);

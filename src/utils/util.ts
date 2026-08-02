@@ -4,7 +4,12 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
-import { FIFO_QUEUE_KEY, MAX_CACHE_SIZE, TASK_QUEUE } from './constants';
+import {
+  FIFO_QUEUE_KEY,
+  MAX_CACHE_SIZE,
+  TASK_QUEUE,
+  TaskQueueTask,
+} from './constants';
 import { TaskQueueAction } from './enums';
 import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 
@@ -47,14 +52,14 @@ async function setCacheFIFO({
 async function getCache(code: string) {
   return await redis.get(`shortCode:${code}`);
 }
-const isValidEmail = (email: string) => {
+function isValidEmail(email: string) {
   const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return regex.test(email);
-};
-const isValidDateTime = (value: string) => {
+}
+function isValidDateTime(value: string) {
   const timestamp = Date.parse(value);
   return !isNaN(timestamp);
-};
+}
 async function hashPassword(password: string) {
   const saltRounds = 10;
   return await bcrypt.hash(password, saltRounds);
@@ -101,8 +106,8 @@ const options = {
   second: '2-digit' as 'numeric' | '2-digit' | undefined,
   hour12: true, // Set to false for 24-hour clock
 };
-async function sleep() {
-  return new Promise((res) => setTimeout(res, 3000));
+async function sleep(timeInMs: number = 3000) {
+  return new Promise((res) => setTimeout(res, timeInMs));
 }
 async function generateThumbnail(data: {
   imagePath: string;
@@ -137,6 +142,11 @@ async function thumbnailImagePath(id: number) {
   const uniqueName = Date.now() + '-' + `${id}`;
   return path.join(outputDir, `${uniqueName}.jpg`);
 }
+function isImageUploadTask(
+  task: TaskQueueTask,
+): task is Extract<TaskQueueTask, { event: TaskQueueAction.IMAGE_UPLOAD }> {
+  return task.event === TaskQueueAction.IMAGE_UPLOAD;
+}
 async function flushRedirectStatsQueue() {
   const d: Record<string, number> = {};
 
@@ -144,10 +154,10 @@ async function flushRedirectStatsQueue() {
 
   for (const task of TASK_QUEUE) {
     if (
-      task.type === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
-      task.shortCode
+      task.event === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
+      task.data.shortCode
     ) {
-      d[task.shortCode] = (d[task.shortCode] || 0) + 1;
+      d[task.data.shortCode] = (d[task.data.shortCode] || 0) + 1;
     } else {
       remainingQueue.push(task);
     }
@@ -171,6 +181,44 @@ async function flushRedirectStatsQueue() {
     console.error('Increment stats failed');
   }
 }
+async function logUpload() {
+  await sleep(1000);
+}
+async function notifyAdmin() {
+  await sleep(2000);
+}
+async function imageProcessingWorker(workerName: string) {
+  const reqdIndex = TASK_QUEUE.findIndex(isImageUploadTask);
+  if (reqdIndex === -1) {
+    console.log('No queued tasks.');
+    console.log('---------------------');
+    return;
+  }
+  const [task] = TASK_QUEUE.splice(reqdIndex, 1);
+  if (!task) {
+    console.log('No queued tasks.');
+    console.log('---------------------');
+    return;
+  }
+  if (!isImageUploadTask(task)) {
+    return;
+  }
+  try {
+    console.log(
+      `Picked thumbnail task for user ${task.data.id} by ${workerName}`,
+    );
+    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
+    console.log(
+      `Thumbnail task completed for user ${task.data.id} by ${workerName}`,
+    );
+  } catch (e) {
+    console.error(`Thumbnail task failed for user ${task.data.id}`);
+    console.error(e);
+  }
+}
+const SUBSCRIBERS = {
+  [TaskQueueAction.IMAGE_UPLOAD]: [generateThumbnail, logUpload, notifyAdmin],
+};
 export {
   isValidEmail,
   isValidDateTime,
@@ -186,4 +234,8 @@ export {
   generateThumbnail,
   thumbnailImagePath,
   flushRedirectStatsQueue,
+  imageProcessingWorker,
+  SUBSCRIBERS,
+  logUpload,
+  notifyAdmin,
 };

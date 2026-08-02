@@ -80,14 +80,14 @@ describe('User file upload', () => {
     expect(TASK_QUEUE).toHaveLength(1);
 
     const task = TASK_QUEUE[0];
-    expect(task.type).toBe(TaskQueueAction.GENERATE_THUMBNAIL);
+    expect(task.event).toBe(TaskQueueAction.IMAGE_UPLOAD);
 
-    if (task.type !== TaskQueueAction.GENERATE_THUMBNAIL) {
+    if (task.event !== TaskQueueAction.IMAGE_UPLOAD) {
       throw new Error('Expected thumbnail task');
     }
 
-    expect(task.file).toBeTruthy();
-    expect(task.imagePath).toBeTruthy();
-    expect(task.id).toBeTruthy();
+    expect(task.data.file).toBeTruthy();
+    expect(task.data.imagePath).toBeTruthy();
+    expect(task.data.id).toBeTruthy();
   });
 });
