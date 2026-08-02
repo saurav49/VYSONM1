@@ -53,6 +53,20 @@ const NOTIFICATIONS = 'notifications';
 const DEAD_LETTER = 'dead-letter';
 const RETRY = 'retry';
 
+const DEFAULT_QUEUE_CONFIG = {
+  removeOnComplete: {
+    age: 3600,
+  },
+  removeOnFail: {
+    age: 24 * 3600,
+  },
+  attempts: 5,
+  backoff: {
+    type: 'exponential',
+    delay: 60_000,
+  },
+};
+
 export {
   PAGE_SIZE,
   ALLOWED_FILE_TYPE,
@@ -70,6 +84,7 @@ export {
   NOTIFICATIONS,
   DEAD_LETTER,
   RETRY,
+  DEFAULT_QUEUE_CONFIG,
 };
 export type {
   TaskQueueTask,

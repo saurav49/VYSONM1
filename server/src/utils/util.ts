@@ -8,12 +8,10 @@ import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
 import {
-  BASE_RETRY_DELAY_MS,
   DEAD_LETTER_QUEUE,
   FIFO_QUEUE_KEY,
   ImageUploadQueueTask,
   MAX_CACHE_SIZE,
-  RETRY_QUEUE,
   SSE_CLIENTS,
   TASK_QUEUE,
   TaskQueueTask,
@@ -22,7 +20,7 @@ import { TaskQueueAction } from './enums';
 import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 import { getAnalytics } from '../modules/analytics/analytics.service';
 import { Response } from 'express';
-import { retryQueue } from './queue';
+import { deadLetterQueue, retryQueue } from './queue';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -173,30 +171,27 @@ function isImageUploadTask(
 ): task is Extract<TaskQueueTask, { event: TaskQueueAction.IMAGE_UPLOAD }> {
   return task.event === TaskQueueAction.IMAGE_UPLOAD;
 }
-function retryAt(attempts: number) {
-  const delay = Math.min(
-    BASE_RETRY_DELAY_MS * 2 ** Math.max(attempts - 1, 0),
-    30 * 60_000,
-  );
-  return Date.now() + delay + jitter();
-}
+// function retryAt(attempts: number) {
+//   const delay = Math.min(
+//     BASE_RETRY_DELAY_MS * 2 ** Math.max(attempts - 1, 0),
+//     30 * 60_000,
+//   );
+//   return Date.now() + delay + jitter();
+// }
 function retryOrDeadLetter(task: TaskQueueTask) {
   if (task.attempts >= task.maxAttempts) {
-    DEAD_LETTER_QUEUE.push(task);
+    // DEAD_LETTER_QUEUE.push(task);
+    deadLetterQueue.add('dead-letter', task, {
+      removeOnComplete: {
+        age: 3600,
+      },
+      removeOnFail: {
+        age: 24 * 3600,
+      },
+    });
     return;
   }
-  RETRY_QUEUE.push({ ...task, nextAttemptAt: retryAt(task.attempts) });
-  retryQueue.add(
-    'retry',
-    { ...task },
-    {
-      attempts: 5,
-      backoff: {
-        type: 'exponential',
-        delay: 60_000,
-      },
-    },
-  );
+  // RETRY_QUEUE.push({ ...task, nextAttemptAt: retryAt(task.attempts) });
 }
 async function flushRedirectStatsQueue() {
   const tasks = TASK_QUEUE.splice(0);
@@ -264,28 +259,29 @@ async function imageProcessingWorker(workerName: string) {
     retryOrDeadLetter(attemptedTask);
   }
 }
-function jitter() {
-  return Math.random() * 5_000;
-}
-async function retryQueueWorker() {
-  const now = Date.now();
-  const dueTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt <= now);
-  const waitingTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt > now);
-  RETRY_QUEUE.length = 0;
-  RETRY_QUEUE.push(...waitingTasks);
-  retryQueue.add(
-    'retry',
-    { ...waitingTasks },
-    {
-      attempts: 5,
-      backoff: {
-        type: 'exponential',
-        delay: 60_000,
-      },
-    },
-  );
-  await processTaskBatch(dueTasks);
-}
+// function jitter() {
+//   return Math.random() * 5_000;
+// }
+
+// async function retryQueueWorker() {
+//   const now = Date.now();
+//   const dueTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt <= now);
+//   const waitingTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt > now);
+//   RETRY_QUEUE.length = 0;
+//   RETRY_QUEUE.push(...waitingTasks);
+//   retryQueue.add(
+//     'retry',
+//     { ...waitingTasks },
+//     {
+//       attempts: 5,
+//       backoff: {
+//         type: 'exponential',
+//         delay: 60_000,
+//       },
+//     },
+//   );
+//   await processTaskBatch(dueTasks);
+// }
 async function processTaskBatch(tasks: TaskQueueTask[]) {
   const statsByCode: Record<
     string,
@@ -429,6 +425,6 @@ export {
   notifyAdmin,
   sendSse,
   broadcastSSELeaderboard,
-  retryQueueWorker,
+  // retryQueueWorker,
   deadLetterQueueWorker,
 };

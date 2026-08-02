@@ -7,50 +7,34 @@ import {
   REDIRECT_STATS,
 } from './constants';
 
-const redirectStatsWorker = new Worker(
-  REDIRECT_STATS,
-  async (job) =>
-    await new Promise((resolve, _reject) =>
-      setTimeout(() => resolve(console.log('processing job', job)), 3000),
-    ),
-  {
-    connection: redis,
-  },
-);
-const imageProcessingWorker = new Worker(
-  IMAGE_PROCESSING,
-  async (job) =>
-    await new Promise((resolve, _reject) =>
-      setTimeout(() => resolve(console.log('processing job', job)), 3000),
-    ),
-  {
-    connection: redis,
-  },
-);
-const notificationWorker = new Worker(
-  NOTIFICATIONS,
-  async (job) =>
-    await new Promise((resolve, _reject) =>
-      setTimeout(() => resolve(console.log('processing job', job)), 3000),
-    ),
-  {
-    connection: redis,
-  },
-);
-const deadLetterWorker = new Worker(
-  DEAD_LETTER,
-  async (job) =>
-    await new Promise((resolve, _reject) =>
-      setTimeout(() => resolve(console.log('processing job', job)), 3000),
-    ),
-  {
-    connection: redis,
-  },
-);
+let worker: Worker;
 
-export {
-  redirectStatsWorker,
-  imageProcessingWorker,
-  notificationWorker,
-  deadLetterWorker,
-};
+function redirectStatsWorker() {
+  worker = new Worker(
+    REDIRECT_STATS,
+    async (job) => {
+      try {
+      } catch (e) {}
+    },
+    {
+      connection: redis,
+      autorun: true,
+    },
+  );
+}
+
+function imageProcessingWorker() {
+  worker = new Worker(REDIRECT_STATS, async (job) => {}, {
+    connection: redis,
+    autorun: true,
+  });
+}
+
+function deadLetterWorker() {
+  worker = new Worker(REDIRECT_STATS, async (job) => {}, {
+    connection: redis,
+    autorun: true,
+  });
+}
+
+export { redirectStatsWorker, imageProcessingWorker, deadLetterWorker };

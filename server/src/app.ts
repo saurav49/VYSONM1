@@ -17,14 +17,7 @@ import {
 } from './middlewares/request-time.middleware';
 import { swaggerSpec } from './swagger';
 import { limiter } from './config/limiter';
-import {
-  flushRedirectStatsQueue,
-  options,
-  sleep,
-  retryQueueWorker,
-  deadLetterQueueWorker,
-} from './utils/util';
-import cron from 'node-cron';
+import { options, sleep } from './utils/util';
 
 dotenv.config();
 
@@ -115,34 +108,34 @@ v2Routes.use(v2UsersRouter);
 //   console.log('---------------------');
 // });
 
-cron.schedule('*/5 * * * *', async () => {
-  console.log('---------------------');
-  console.log(`Running cron (${new Date().toISOString()})`);
+// cron.schedule('*/5 * * * *', async () => {
+//   console.log('---------------------');
+//   console.log(`Running cron (${new Date().toISOString()})`);
 
-  await flushRedirectStatsQueue();
+//   await flushRedirectStatsQueue();
 
-  console.log('---------------------');
-});
+//   console.log('---------------------');
+// });
 
-cron.schedule('*/10 * * * *', async () => {
-  console.log('---------------------');
-  console.log(`Running cron (${new Date().toISOString()}) for retry queue`);
+// cron.schedule('*/10 * * * *', async () => {
+//   console.log('---------------------');
+//   console.log(`Running cron (${new Date().toISOString()}) for retry queue`);
 
-  await retryQueueWorker();
+//   await retryQueueWorker();
 
-  console.log('---------------------');
-});
+//   console.log('---------------------');
+// });
 
-cron.schedule('*/30 * * * *', async () => {
-  console.log('---------------------');
-  console.log(
-    `Running cron (${new Date().toISOString()}) for dead letter queue`,
-  );
+// cron.schedule('*/30 * * * *', async () => {
+//   console.log('---------------------');
+//   console.log(
+//     `Running cron (${new Date().toISOString()}) for dead letter queue`,
+//   );
 
-  await deadLetterQueueWorker();
+//   await deadLetterQueueWorker();
 
-  console.log('---------------------');
-});
+//   console.log('---------------------');
+// });
 
 Sentry.setupExpressErrorHandler(app);
 app.use(errorMiddleware);

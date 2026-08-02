@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { PAGE_SIZE, TASK_QUEUE } from '../../utils/constants';
+import { PAGE_SIZE } from '../../utils/constants';
 import { isValidEmail, sleep, thumbnailImagePath } from '../../utils/util';
 import { badRequest, unauthorized } from '../../shared/errors/httpErrors';
 import {
