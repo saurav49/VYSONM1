@@ -24,14 +24,14 @@ function redirectStatsWorker() {
 }
 
 function imageProcessingWorker() {
-  worker = new Worker(REDIRECT_STATS, async (job) => {}, {
+  worker = new Worker(IMAGE_PROCESSING, async (job) => {}, {
     connection: redis,
     autorun: true,
   });
 }
 
 function deadLetterWorker() {
-  worker = new Worker(REDIRECT_STATS, async (job) => {}, {
+  worker = new Worker(DEAD_LETTER, async (job) => {}, {
     connection: redis,
     autorun: true,
   });
