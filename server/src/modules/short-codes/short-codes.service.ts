@@ -15,7 +15,6 @@ import {
 } from '../../shared/responses/apiResponse';
 import {
   deleteCache,
-  flushRedirectStatsQueue,
   getCache,
   hashPassword,
   isValidDateTime,
@@ -31,11 +30,10 @@ import {
   findActiveByShortCode,
   findByShortCode,
   findFirstUniqueCode,
-  incrementRedirectStats,
   softDeleteShortCodeForUser,
   updateShortCodeForUser,
 } from './short-codes.repository';
-import { DEFAULT_QUEUE_CONFIG, TASK_QUEUE } from '../../utils/constants';
+import { DEFAULT_QUEUE_CONFIG } from '../../utils/constants';
 import { TaskQueueAction } from '../../utils/enums';
 import { redirectStatsQueue } from '../../utils/queue';
 
@@ -240,29 +238,19 @@ async function redirect({
 
   const cachedUrl = await getCache(code as string);
   if (cachedUrl) {
-    // TASK_QUEUE.push({
-    //   event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-    //   data: { shortCode: code as string },
-    //   attempts: 0,
-    //   maxAttempts: MAX_TASK_ATTEMPTS,
-    //   nextAttemptAt: 0,
-    //   taskId: `${code}_${randomUUID()}`,
-    // });
+    const taskId = `${code}_${randomUUID()}`;
     await redirectStatsQueue.add(
       'increment-redirect-stats',
       {
         event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
         data: { shortCode: code as string },
-        taskId: `${code}_${randomUUID()}`,
+        taskId,
       },
-      DEFAULT_QUEUE_CONFIG,
+      {
+        ...DEFAULT_QUEUE_CONFIG,
+        jobId: taskId,
+      },
     );
-    const incrementStatsQueue = TASK_QUEUE.filter(
-      (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
-    );
-    if (incrementStatsQueue.length > 100) {
-      void flushRedirectStatsQueue();
-    }
     return cachedUrl;
   }
 
@@ -294,33 +282,19 @@ async function redirect({
       originalUrl: result.originalUrl,
     });
   }
-
-  // TASK_QUEUE.push({
-  //   event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-  //   data: {
-  //     shortCode: code as string,
-  //   },
-  //   attempts: 0,
-  //   maxAttempts: MAX_TASK_ATTEMPTS,
-  //   nextAttemptAt: 0,
-  //   taskId: `${code}_${randomUUID()}`,
-  // });
+  const taskId = `${code}_${randomUUID()}`;
   await redirectStatsQueue.add(
     'increment-redirect-stats',
     {
       event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
       data: { shortCode: code as string },
-      taskId: `${code}_${randomUUID()}`,
+      taskId,
     },
-    DEFAULT_QUEUE_CONFIG,
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      jobId: taskId,
+    },
   );
-  // const incrementStatsQueue = TASK_QUEUE.filter(
-  //   (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
-  // );
-  // if (incrementStatsQueue.length > 100) {
-  //   void flushRedirectStatsQueue();
-  // }
-
   return result.originalUrl;
 }
 

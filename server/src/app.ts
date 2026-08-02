@@ -108,35 +108,6 @@ v2Routes.use(v2UsersRouter);
 //   console.log('---------------------');
 // });
 
-// cron.schedule('*/5 * * * *', async () => {
-//   console.log('---------------------');
-//   console.log(`Running cron (${new Date().toISOString()})`);
-
-//   await flushRedirectStatsQueue();
-
-//   console.log('---------------------');
-// });
-
-// cron.schedule('*/10 * * * *', async () => {
-//   console.log('---------------------');
-//   console.log(`Running cron (${new Date().toISOString()}) for retry queue`);
-
-//   await retryQueueWorker();
-
-//   console.log('---------------------');
-// });
-
-// cron.schedule('*/30 * * * *', async () => {
-//   console.log('---------------------');
-//   console.log(
-//     `Running cron (${new Date().toISOString()}) for dead letter queue`,
-//   );
-
-//   await deadLetterQueueWorker();
-
-//   console.log('---------------------');
-// });
-
 Sentry.setupExpressErrorHandler(app);
 app.use(errorMiddleware);
 

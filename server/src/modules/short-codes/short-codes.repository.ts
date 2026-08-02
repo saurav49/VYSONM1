@@ -72,26 +72,26 @@ async function softDeleteShortCodeForUser({
 }
 
 async function incrementRedirectStats({
-  tasks,
+  taskId,
   shortCode,
-  clicks,
+  event,
 }: {
-  tasks: IncrementStatsQueueTask[];
+  taskId: string;
   shortCode: string;
-  clicks: number | { increment: number };
+  event: string;
 }) {
   return prisma.$transaction(async (tx) => {
     const inserts = await tx.processedTask.createMany({
-      data: tasks.map((t) => ({ taskId: t.taskId, event: t.event })),
+      data: { taskId: taskId, event: event },
       skipDuplicates: true,
     });
-    if (inserts.count > 0) {
+    if (inserts.count === 1) {
       await tx.urlShortener.update({
         where: {
           shortCode,
         },
         data: {
-          clicks: { increment: inserts.count },
+          clicks: { increment: 1 },
           lastAccessedAt: new Date(),
         },
       });

@@ -1,26 +1,18 @@
 import { redis } from '../config/redis';
-import { Resend } from 'resend';
-import { config } from '../config/env';
-const resend = new Resend(config.RESEND_API_KEY);
 const bcrypt = require('bcrypt');
-import crypto, { randomUUID } from 'crypto';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
 import {
-  DEAD_LETTER_QUEUE,
   FIFO_QUEUE_KEY,
   ImageUploadQueueTask,
   MAX_CACHE_SIZE,
   SSE_CLIENTS,
-  TASK_QUEUE,
-  TaskQueueTask,
 } from './constants';
 import { TaskQueueAction } from './enums';
-import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 import { getAnalytics } from '../modules/analytics/analytics.service';
 import { Response } from 'express';
-import { deadLetterQueue, retryQueue } from './queue';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -166,38 +158,6 @@ async function thumbnailImagePath(id: number) {
   const uniqueName = Date.now() + '-' + `${id}`;
   return path.join(outputDir, `${uniqueName}.jpg`);
 }
-function isImageUploadTask(
-  task: TaskQueueTask,
-): task is Extract<TaskQueueTask, { event: TaskQueueAction.IMAGE_UPLOAD }> {
-  return task.event === TaskQueueAction.IMAGE_UPLOAD;
-}
-// function retryAt(attempts: number) {
-//   const delay = Math.min(
-//     BASE_RETRY_DELAY_MS * 2 ** Math.max(attempts - 1, 0),
-//     30 * 60_000,
-//   );
-//   return Date.now() + delay + jitter();
-// }
-function retryOrDeadLetter(task: TaskQueueTask) {
-  if (task.attempts >= task.maxAttempts) {
-    // DEAD_LETTER_QUEUE.push(task);
-    deadLetterQueue.add('dead-letter', task, {
-      removeOnComplete: {
-        age: 3600,
-      },
-      removeOnFail: {
-        age: 24 * 3600,
-      },
-    });
-    return;
-  }
-  // RETRY_QUEUE.push({ ...task, nextAttemptAt: retryAt(task.attempts) });
-}
-async function flushRedirectStatsQueue() {
-  const tasks = TASK_QUEUE.splice(0);
-  await processTaskBatch(tasks);
-  await sendWebhookDataHandler();
-}
 async function sendWebhookDataHandler() {
   try {
     const analytics = await getAnalytics();
@@ -224,145 +184,6 @@ async function logUpload() {
 async function notifyAdmin() {
   await sleep(2000);
 }
-async function imageProcessingWorker(workerName: string) {
-  const reqdIndex = TASK_QUEUE.findIndex(isImageUploadTask);
-  if (reqdIndex === -1) {
-    console.log('No queued tasks.');
-    console.log('---------------------');
-    return;
-  }
-  const [task] = TASK_QUEUE.splice(reqdIndex, 1);
-  if (!task) {
-    console.log('No queued tasks.');
-    console.log('---------------------');
-    return;
-  }
-  if (!isImageUploadTask(task)) {
-    return;
-  }
-  if (task.attempts >= task.maxAttempts) {
-    DEAD_LETTER_QUEUE.push(task);
-    return;
-  }
-  const attemptedTask = { ...task, attempts: task.attempts + 1 };
-  try {
-    console.log(
-      `Picked thumbnail task for user ${task.data.id} by ${workerName}`,
-    );
-    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(attemptedTask)));
-    console.log(
-      `Thumbnail task completed for user ${task.data.id} by ${workerName}`,
-    );
-  } catch (e) {
-    console.error(`Thumbnail task failed for user ${task.data.id}`);
-    console.error(e);
-    retryOrDeadLetter(attemptedTask);
-  }
-}
-// function jitter() {
-//   return Math.random() * 5_000;
-// }
-
-// async function retryQueueWorker() {
-//   const now = Date.now();
-//   const dueTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt <= now);
-//   const waitingTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt > now);
-//   RETRY_QUEUE.length = 0;
-//   RETRY_QUEUE.push(...waitingTasks);
-//   retryQueue.add(
-//     'retry',
-//     { ...waitingTasks },
-//     {
-//       attempts: 5,
-//       backoff: {
-//         type: 'exponential',
-//         delay: 60_000,
-//       },
-//     },
-//   );
-//   await processTaskBatch(dueTasks);
-// }
-async function processTaskBatch(tasks: TaskQueueTask[]) {
-  const statsByCode: Record<
-    string,
-    Extract<
-      TaskQueueTask,
-      { event: TaskQueueAction.INCREMENT_REDIRECT_STATS }
-    >[]
-  > = {};
-  const imageTasks: Extract<
-    TaskQueueTask,
-    { event: TaskQueueAction.IMAGE_UPLOAD }
-  >[] = [];
-
-  for (const task of tasks) {
-    if (task.attempts >= task.maxAttempts) {
-      DEAD_LETTER_QUEUE.push(task);
-    } else if (isImageUploadTask(task)) {
-      if (!task.taskId) {
-        imageTasks.push({
-          ...task,
-          attempts: task.attempts + 1,
-          taskId: `${task.data.id}_${randomUUID()}`,
-        });
-      } else {
-        imageTasks.push({ ...task, attempts: task.attempts + 1 });
-      }
-    } else {
-      const attemptedTask = {
-        ...task,
-        attempts: task.attempts + 1,
-      };
-      statsByCode[task.data.shortCode] = statsByCode[task.data.shortCode] ?? [];
-      statsByCode[task.data.shortCode].push(attemptedTask);
-    }
-  }
-
-  await Promise.all(
-    Object.entries(statsByCode).map(async ([shortCode, tasks]) => {
-      try {
-        await incrementRedirectStats({
-          tasks,
-          shortCode,
-          clicks: { increment: tasks.length },
-        });
-      } catch (e) {
-        console.error(`Increment stats retry failed for ${shortCode}`);
-        console.error(e);
-        tasks.forEach(retryOrDeadLetter);
-      }
-    }),
-  );
-
-  await Promise.all(
-    imageTasks.map(async (task) => {
-      try {
-        const subscribers = SUBSCRIBERS[task.event];
-        const subscriberIndexes =
-          task.subscriberIndex === undefined
-            ? subscribers.map((_, index) => index)
-            : [task.subscriberIndex];
-        const responses = await Promise.allSettled(
-          subscriberIndexes.map((index) => subscribers[index](task)),
-        );
-        responses.forEach((result, responseIndex) => {
-          if (result.status === 'rejected') {
-            const subscriberIndex = subscriberIndexes[responseIndex];
-            console.error(
-              `Subscriber ${subscriberIndex} failed for user ${task.data.id}`,
-              result.reason,
-            );
-            retryOrDeadLetter({ ...task, subscriberIndex });
-          }
-        });
-      } catch (e) {
-        console.error(`Thumbnail retry failed for user ${task.data.id}`);
-        console.error(e);
-        retryOrDeadLetter(task);
-      }
-    }),
-  );
-}
 const SUBSCRIBERS = {
   [TaskQueueAction.IMAGE_UPLOAD]: [generateThumbnail, logUpload, notifyAdmin],
 };
@@ -375,34 +196,6 @@ async function broadcastSSELeaderboard() {
   for (const client of SSE_CLIENTS) {
     sendSse(client, 'leaderboard_update', leaderboard);
   }
-}
-async function deadLetterQueueWorker() {
-  const tasks = DEAD_LETTER_QUEUE.splice(0);
-  const results = await Promise.allSettled(
-    tasks.map(async (task) => {
-      const { error } = await resend.emails.send({
-        from: 'DLQ Monitor <onboarding@resend.dev>',
-        to: [config.DLQ_ALERT_EMAIL!],
-        subject: `Dead-letter task ${task?.taskId}`,
-        html: `
-        <h2>Task moved to dead-letter queue</h2>
-        <p><strong>Task ID:</strong> ${task?.taskId}</p>
-        <p><strong>Event:</strong> ${task?.event}</p>
-        <p><strong>Attempts:</strong> ${task?.attempts}</p>
-        <pre>${JSON.stringify(task, null, 2)}</pre>
-      `,
-        headers: {
-          'Idempotency-Key': `dlq-alert:${task.taskId}`,
-        },
-      });
-      if (error) throw new Error(error.message);
-    }),
-  );
-  results.forEach((r, i) => {
-    if (r.status === 'rejected') {
-      DEAD_LETTER_QUEUE.push(tasks[i]);
-    }
-  });
 }
 export {
   isValidEmail,
@@ -418,13 +211,10 @@ export {
   sleep,
   generateThumbnail,
   thumbnailImagePath,
-  flushRedirectStatsQueue,
-  imageProcessingWorker,
   SUBSCRIBERS,
   logUpload,
   notifyAdmin,
   sendSse,
   broadcastSSELeaderboard,
-  // retryQueueWorker,
-  deadLetterQueueWorker,
+  sendWebhookDataHandler,
 };

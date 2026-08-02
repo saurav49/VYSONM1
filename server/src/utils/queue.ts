@@ -5,7 +5,6 @@ import {
   IMAGE_PROCESSING,
   NOTIFICATIONS,
   REDIRECT_STATS,
-  RETRY,
 } from './constants';
 
 const redirectStatsQueue = new Queue(REDIRECT_STATS, { connection: redis });
@@ -14,12 +13,10 @@ const imageProcessingQueue = new Queue(IMAGE_PROCESSING, {
 });
 const notificationQueue = new Queue(NOTIFICATIONS, { connection: redis });
 const deadLetterQueue = new Queue(DEAD_LETTER, { connection: redis });
-const retryQueue = new Queue(RETRY, { connection: redis });
 
 export {
   redirectStatsQueue,
   imageProcessingQueue,
   notificationQueue,
   deadLetterQueue,
-  retryQueue,
 };
