@@ -37,6 +37,7 @@ import {
 } from './short-codes.repository';
 import { MAX_TASK_ATTEMPTS, TASK_QUEUE } from '../../utils/constants';
 import { TaskQueueAction } from '../../utils/enums';
+import { redirectStatsQueue } from '../../utils/queue';
 
 const bcrypt = require('bcrypt');
 
@@ -247,6 +248,21 @@ async function redirect({
       nextAttemptAt: 0,
       taskId: `${code}_${randomUUID()}`,
     });
+    await redirectStatsQueue.add(
+      'increment-redirect-stats',
+      {
+        event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+        data: { shortCode: code as string },
+        taskId: `${code}_${randomUUID()}`,
+      },
+      {
+        attempts: 5,
+        backoff: {
+          type: 'exponential',
+          delay: 60_000,
+        },
+      },
+    );
     const incrementStatsQueue = TASK_QUEUE.filter(
       (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
     );
@@ -295,6 +311,21 @@ async function redirect({
     nextAttemptAt: 0,
     taskId: `${code}_${randomUUID()}`,
   });
+  await redirectStatsQueue.add(
+    'increment-redirect-stats',
+    {
+      event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+      data: { shortCode: code as string },
+      taskId: `${code}_${randomUUID()}`,
+    },
+    {
+      attempts: 5,
+      backoff: {
+        type: 'exponential',
+        delay: 60_000,
+      },
+    },
+  );
   const incrementStatsQueue = TASK_QUEUE.filter(
     (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
   );

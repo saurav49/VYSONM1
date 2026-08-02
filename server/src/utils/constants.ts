@@ -51,6 +51,7 @@ const REDIRECT_STATS = 'redirect-stats';
 const IMAGE_PROCESSING = 'image-processing';
 const NOTIFICATIONS = 'notifications';
 const DEAD_LETTER = 'dead-letter';
+const RETRY = 'retry';
 
 export {
   PAGE_SIZE,
@@ -68,6 +69,7 @@ export {
   IMAGE_PROCESSING,
   NOTIFICATIONS,
   DEAD_LETTER,
+  RETRY,
 };
 export type {
   TaskQueueTask,

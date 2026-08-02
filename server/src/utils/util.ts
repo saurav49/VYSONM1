@@ -22,6 +22,7 @@ import { TaskQueueAction } from './enums';
 import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 import { getAnalytics } from '../modules/analytics/analytics.service';
 import { Response } from 'express';
+import { retryQueue } from './queue';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -185,6 +186,17 @@ function retryOrDeadLetter(task: TaskQueueTask) {
     return;
   }
   RETRY_QUEUE.push({ ...task, nextAttemptAt: retryAt(task.attempts) });
+  retryQueue.add(
+    'retry',
+    { ...task },
+    {
+      attempts: 5,
+      backoff: {
+        type: 'exponential',
+        delay: 60_000,
+      },
+    },
+  );
 }
 async function flushRedirectStatsQueue() {
   const tasks = TASK_QUEUE.splice(0);
@@ -261,6 +273,17 @@ async function retryQueueWorker() {
   const waitingTasks = RETRY_QUEUE.filter((task) => task.nextAttemptAt > now);
   RETRY_QUEUE.length = 0;
   RETRY_QUEUE.push(...waitingTasks);
+  retryQueue.add(
+    'retry',
+    { ...waitingTasks },
+    {
+      attempts: 5,
+      backoff: {
+        type: 'exponential',
+        delay: 60_000,
+      },
+    },
+  );
   await processTaskBatch(dueTasks);
 }
 async function processTaskBatch(tasks: TaskQueueTask[]) {
