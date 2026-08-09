@@ -7,7 +7,7 @@
     "create-table": "tsx src/scripts/createTable.ts",
     "insert-100M": "tsx src/scripts/insertHundredM.ts",
     "get-original-urls": "tsx src/scripts/getOriginalUrls.ts",
-    "workers": "tsx src/utils/worker.ts",
+    "worker": "tsx src/utils/worker.ts",
     "dev": "tsx watch src/server.ts",
     "build": "bunx --bun prisma generate && tsc",
     "start": "node dist/server.js",

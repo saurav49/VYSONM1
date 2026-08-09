@@ -4,6 +4,7 @@ import {
   DEAD_LETTER,
   IMAGE_PROCESSING,
   NOTIFICATIONS,
+  ORDER_PROCESSING,
   REDIRECT_STATS,
 } from './constants';
 
@@ -13,10 +14,12 @@ const imageProcessingQueue = new Queue(IMAGE_PROCESSING, {
 });
 const notificationQueue = new Queue(NOTIFICATIONS, { connection: redis });
 const deadLetterQueue = new Queue(DEAD_LETTER, { connection: redis });
+const orderProcessingQueue = new Queue(ORDER_PROCESSING, { connection: redis });
 
 export {
   redirectStatsQueue,
   imageProcessingQueue,
   notificationQueue,
   deadLetterQueue,
+  orderProcessingQueue,
 };

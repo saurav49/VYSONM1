@@ -6,6 +6,7 @@ import {
   DEFAULT_QUEUE_CONFIG,
   IMAGE_PROCESSING,
   NOTIFICATIONS,
+  ORDER_PROCESSING,
   REDIRECT_STATS,
 } from './constants';
 import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
@@ -13,7 +14,31 @@ import { deadLetterQueue, notificationQueue } from './queue';
 import { generateThumbnail, notifyAdmin, sendWebhookDataHandler } from './util';
 import { config } from '../config/env';
 import { Resend } from 'resend';
+import { TaskQueueAction } from './enums';
 const resend = new Resend(config.RESEND_API_KEY);
+
+function fraudDetectionService() {
+  return new Worker(ORDER_PROCESSING, async (job) => {
+    try {
+      console.log(
+        `processing order ${JSON.stringify(job)} for fraud detection`,
+      );
+      const event = job.data;
+
+      if (event.event !== TaskQueueAction.ORDER_PLACED) return;
+      if (event.eventVersion < 2) {
+        throw new Error(
+          `Fraud detection requires OrderPlaced v2; received v${event.eventVersion}`,
+        );
+      }
+      // processing v2 task
+      return;
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  });
+}
 
 function redirectStatsWorker() {
   return new Worker(
@@ -151,16 +176,19 @@ function startWorkers() {
   const imageWorker = imageProcessingWorker();
   const notficationProcessingWorker = notificationWorker();
   const deadLetterInstanceWorker = deadLetterWorker();
+  const fraudDetectionWorker = fraudDetectionService();
 
   moveExhaustedJobToDeadLetterQueue(redirectWorker);
   moveExhaustedJobToDeadLetterQueue(imageWorker);
   moveExhaustedJobToDeadLetterQueue(notficationProcessingWorker);
+  moveExhaustedJobToDeadLetterQueue(fraudDetectionWorker);
 
   return [
     redirectWorker,
     imageWorker,
     notficationProcessingWorker,
     deadLetterInstanceWorker,
+    fraudDetectionWorker,
   ];
 }
 

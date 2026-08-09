@@ -6,5 +6,6 @@ enum Tier {
 enum TaskQueueAction {
   IMAGE_UPLOAD = 'IMAGE_UPLOAD',
   INCREMENT_REDIRECT_STATS = 'INCREMENT_REDIRECT_STATS',
+  ORDER_PLACED = 'ORDER_PLACED',
 }
 export { Tier, TaskQueueAction };
