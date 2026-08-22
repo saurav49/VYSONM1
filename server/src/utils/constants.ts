@@ -14,6 +14,7 @@ type GenerateThumbnailTask = {
   imagePath: string;
   file: string;
   id: number;
+  userId: number;
 };
 
 type IncrementStatsTask = {
@@ -65,9 +66,14 @@ const SSE_CLIENTS = new Set<Response>();
 
 const REDIRECT_STATS = 'redirect-stats';
 const IMAGE_PROCESSING = 'image-processing';
+const IMAGE_SAFETY = 'image-safety';
+const IMAGE_AGGREGATION_TIMEOUT = 'image-aggregation-timeout';
 const NOTIFICATIONS = 'notifications';
 const DEAD_LETTER = 'dead-letter';
 const ORDER_PROCESSING = 'order-processing';
+const INVENTORY_PROCESSING = 'inventory-processing';
+
+const IMAGE_PROCESSING_TIMEOUT = 5 * 60 * 1000;
 
 const DEFAULT_QUEUE_CONFIG = {
   removeOnComplete: {
@@ -105,6 +111,10 @@ export {
   DEFAULT_QUEUE_CONFIG,
   DEFAULT_DEAD_LETTER_QUEUE_CONFIG,
   ORDER_PROCESSING,
+  IMAGE_PROCESSING_TIMEOUT,
+  IMAGE_SAFETY,
+  IMAGE_AGGREGATION_TIMEOUT,
+  INVENTORY_PROCESSING,
 };
 export type {
   TaskQueueTask,

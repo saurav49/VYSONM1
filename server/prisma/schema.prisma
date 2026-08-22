@@ -60,3 +60,36 @@ model ProcessedTask {
   processedAt   DateTime  @default(now())
   event         String
 }
+
+model ImageProcessingAggregate {
+  taskId                String    @id
+  userId                Int
+  thumbnailReady        Boolean   @default(false)
+  thumbnailCompletedAt  DateTime?
+  safetyCheckCompleted  Boolean   @default(false)
+  safetyCheckCompletedAt DateTime?
+  notificationTriggered Boolean   @default(false)
+  timedOut              Boolean   @default(false)
+  manualReviewTriggered Boolean   @default(false)
+  deadlineAt            DateTime
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([deadlineAt])
+}
+
+model InventoryItem {
+  sku               String @id
+  availableQuantity Int
+  updatedAt         DateTime @updatedAt
+}
+
+model InventoryReservation {
+  eventId    String   @id
+  orderId    String
+  sku        String
+  quantity   Int
+  reservedAt DateTime @default(now())
+
+  @@index([orderId])
+}

@@ -73,6 +73,16 @@ async function findUser(data: { apiKey: string }) {
   });
 }
 
+async function createImageProcessingAggregate(data: {
+  taskId: string;
+  userId: number;
+  deadlineAt: Date;
+}) {
+  return await prisma.imageProcessingAggregate.create({
+    data,
+  });
+}
+
 export {
   createUser,
   findUserWithShortensByApiKey,
@@ -80,4 +90,5 @@ export {
   softDeleteUserByApiKey,
   uploadf,
   findUser,
+  createImageProcessingAggregate,
 };
