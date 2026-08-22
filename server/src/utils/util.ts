@@ -6,13 +6,11 @@ import path from 'path';
 import fs from 'fs/promises';
 import {
   FIFO_QUEUE_KEY,
+  ImageUploadQueueTask,
   MAX_CACHE_SIZE,
   SSE_CLIENTS,
-  TASK_QUEUE,
-  TaskQueueTask,
 } from './constants';
 import { TaskQueueAction } from './enums';
-import { incrementRedirectStats } from '../modules/short-codes/short-codes.repository';
 import { getAnalytics } from '../modules/analytics/analytics.service';
 import { Response } from 'express';
 
@@ -112,11 +110,16 @@ const options = {
 async function sleep(timeInMs: number = 3000) {
   return new Promise((res) => setTimeout(res, timeInMs));
 }
-async function generateThumbnail(data: {
-  imagePath: string;
-  file: string;
-  id: number;
-}) {
+async function generateThumbnail(task: ImageUploadQueueTask) {
+  const data = task.data;
+  const response = await prisma.user.findUnique({
+    where: {
+      id: data.id,
+    },
+  });
+  if (response?.thumbnail) {
+    return response;
+  }
   const { default: sharp } = await import('sharp');
 
   console.log(`Generating thumbnail for user ${data.id}`);
@@ -126,13 +129,23 @@ async function generateThumbnail(data: {
     .jpeg({ quality: 90 })
     .toFile(data.imagePath);
 
-  await prisma.user.update({
-    where: {
-      id: data.id,
-    },
-    data: {
-      thumbnail: data.imagePath,
-    },
+  await prisma.$transaction(async (tx) => {
+    const inserts = await tx.processedTask.createMany({
+      data: {
+        taskId: task.taskId,
+        event: task.event,
+      },
+      skipDuplicates: true,
+    });
+    if (inserts.count === 0) return;
+    await tx.user.update({
+      where: {
+        id: data.id,
+      },
+      data: {
+        thumbnail: data.imagePath,
+      },
+    });
   });
 
   console.log(`Thumbnail saved for user ${data.id}: ${data.imagePath}`);
@@ -145,39 +158,8 @@ async function thumbnailImagePath(id: number) {
   const uniqueName = Date.now() + '-' + `${id}`;
   return path.join(outputDir, `${uniqueName}.jpg`);
 }
-function isImageUploadTask(
-  task: TaskQueueTask,
-): task is Extract<TaskQueueTask, { event: TaskQueueAction.IMAGE_UPLOAD }> {
-  return task.event === TaskQueueAction.IMAGE_UPLOAD;
-}
-async function flushRedirectStatsQueue() {
-  const d: Record<string, number> = {};
-
-  const remainingQueue = [];
-
-  for (const task of TASK_QUEUE) {
-    if (
-      task.event === TaskQueueAction.INCREMENT_REDIRECT_STATS &&
-      task.data.shortCode
-    ) {
-      d[task.data.shortCode] = (d[task.data.shortCode] || 0) + 1;
-    } else {
-      remainingQueue.push(task);
-    }
-  }
-
-  TASK_QUEUE.length = 0;
-  TASK_QUEUE.push(...remainingQueue);
-
-  const promises = Object.entries(d).map(([shortCode, clicks]) => {
-    return incrementRedirectStats({
-      shortCode,
-      clicks: { increment: clicks },
-    });
-  });
-
+async function sendWebhookDataHandler() {
   try {
-    await Promise.all(promises);
     const analytics = await getAnalytics();
     await fetch(process.env.ANALYTICS_WEBHOOK_URL!, {
       method: 'POST',
@@ -191,11 +173,9 @@ async function flushRedirectStatsQueue() {
         sentAt: new Date().toISOString(),
       }),
     });
-
-    console.log('Increment stats task completed');
   } catch (e) {
     console.error(e);
-    console.error('Increment stats failed');
+    console.error('Webhook update failed');
   }
 }
 async function logUpload() {
@@ -203,35 +183,6 @@ async function logUpload() {
 }
 async function notifyAdmin() {
   await sleep(2000);
-}
-async function imageProcessingWorker(workerName: string) {
-  const reqdIndex = TASK_QUEUE.findIndex(isImageUploadTask);
-  if (reqdIndex === -1) {
-    console.log('No queued tasks.');
-    console.log('---------------------');
-    return;
-  }
-  const [task] = TASK_QUEUE.splice(reqdIndex, 1);
-  if (!task) {
-    console.log('No queued tasks.');
-    console.log('---------------------');
-    return;
-  }
-  if (!isImageUploadTask(task)) {
-    return;
-  }
-  try {
-    console.log(
-      `Picked thumbnail task for user ${task.data.id} by ${workerName}`,
-    );
-    await Promise.all(SUBSCRIBERS[task.event].map((t) => t(task.data)));
-    console.log(
-      `Thumbnail task completed for user ${task.data.id} by ${workerName}`,
-    );
-  } catch (e) {
-    console.error(`Thumbnail task failed for user ${task.data.id}`);
-    console.error(e);
-  }
 }
 const SUBSCRIBERS = {
   [TaskQueueAction.IMAGE_UPLOAD]: [generateThumbnail, logUpload, notifyAdmin],
@@ -260,11 +211,10 @@ export {
   sleep,
   generateThumbnail,
   thumbnailImagePath,
-  flushRedirectStatsQueue,
-  imageProcessingWorker,
   SUBSCRIBERS,
   logUpload,
   notifyAdmin,
   sendSse,
   broadcastSSELeaderboard,
+  sendWebhookDataHandler,
 };

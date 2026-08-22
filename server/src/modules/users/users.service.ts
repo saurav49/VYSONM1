@@ -1,5 +1,5 @@
-import crypto from 'crypto';
-import { PAGE_SIZE, TASK_QUEUE } from '../../utils/constants';
+import crypto, { randomUUID } from 'crypto';
+import { DEFAULT_QUEUE_CONFIG, PAGE_SIZE } from '../../utils/constants';
 import { isValidEmail, sleep, thumbnailImagePath } from '../../utils/util';
 import { badRequest, unauthorized } from '../../shared/errors/httpErrors';
 import {
@@ -12,7 +12,7 @@ import {
 } from './users.repository';
 import { CreateUserInput, User } from './users.types';
 import { TaskQueueAction } from '../../utils/enums';
-import { publisher } from '../../utils/PubSub';
+import { imageProcessingQueue } from '../../utils/queue';
 
 function mapShortens(shortens: any[]) {
   return shortens.map((shorten) => ({
@@ -33,18 +33,22 @@ async function enqueueThumbnailTask({
   filePath: string;
 }) {
   const outputPath = await thumbnailImagePath(id);
-  // pb.publish(TaskQueueAction.IMAGE_UPLOAD, {
-  //   imagePath: outputPath,
-  //   file: filePath,
-  //   id,
-  // });
-  publisher.publish(
-    TaskQueueAction.IMAGE_UPLOAD,
-    JSON.stringify({
-      imagePath: outputPath,
-      file: filePath,
-      id,
-    }),
+  const taskId = `${id}_${randomUUID()}`;
+  await imageProcessingQueue.add(
+    'generate-thumbnail',
+    {
+      data: {
+        imagePath: outputPath,
+        file: filePath,
+        id,
+      },
+      taskId,
+      event: TaskQueueAction.IMAGE_UPLOAD,
+    },
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      jobId: taskId,
+    },
   );
 }
 

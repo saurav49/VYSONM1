@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { UserModel } from '../../generated/prisma/models/User';
 import { HTTP_STATUS } from '../../shared/constants/httpStatus';
 import { AppError } from '../../shared/errors/AppError';
@@ -15,7 +15,6 @@ import {
 } from '../../shared/responses/apiResponse';
 import {
   deleteCache,
-  flushRedirectStatsQueue,
   getCache,
   hashPassword,
   isValidDateTime,
@@ -31,12 +30,12 @@ import {
   findActiveByShortCode,
   findByShortCode,
   findFirstUniqueCode,
-  incrementRedirectStats,
   softDeleteShortCodeForUser,
   updateShortCodeForUser,
 } from './short-codes.repository';
-import { TASK_QUEUE } from '../../utils/constants';
+import { DEFAULT_QUEUE_CONFIG } from '../../utils/constants';
 import { TaskQueueAction } from '../../utils/enums';
+import { redirectStatsQueue } from '../../utils/queue';
 
 const bcrypt = require('bcrypt');
 
@@ -239,16 +238,19 @@ async function redirect({
 
   const cachedUrl = await getCache(code as string);
   if (cachedUrl) {
-    TASK_QUEUE.push({
-      event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-      data: { shortCode: code as string },
-    });
-    const incrementStatsQueue = TASK_QUEUE.filter(
-      (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
+    const taskId = `${code}_${randomUUID()}`;
+    await redirectStatsQueue.add(
+      'increment-redirect-stats',
+      {
+        event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+        data: { shortCode: code as string },
+        taskId,
+      },
+      {
+        ...DEFAULT_QUEUE_CONFIG,
+        jobId: taskId,
+      },
     );
-    if (incrementStatsQueue.length > 100) {
-      void flushRedirectStatsQueue();
-    }
     return cachedUrl;
   }
 
@@ -280,20 +282,19 @@ async function redirect({
       originalUrl: result.originalUrl,
     });
   }
-
-  TASK_QUEUE.push({
-    event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
-    data: {
-      shortCode: code as string,
+  const taskId = `${code}_${randomUUID()}`;
+  await redirectStatsQueue.add(
+    'increment-redirect-stats',
+    {
+      event: TaskQueueAction.INCREMENT_REDIRECT_STATS,
+      data: { shortCode: code as string },
+      taskId,
     },
-  });
-  const incrementStatsQueue = TASK_QUEUE.filter(
-    (t) => t.event === TaskQueueAction.INCREMENT_REDIRECT_STATS,
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      jobId: taskId,
+    },
   );
-  if (incrementStatsQueue.length > 100) {
-    void flushRedirectStatsQueue();
-  }
-
   return result.originalUrl;
 }
 

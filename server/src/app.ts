@@ -17,13 +17,7 @@ import {
 } from './middlewares/request-time.middleware';
 import { swaggerSpec } from './swagger';
 import { limiter } from './config/limiter';
-import {
-  flushRedirectStatsQueue,
-  options,
-  sleep,
-  imageProcessingWorker,
-} from './utils/util';
-import cron from 'node-cron';
+import { options, sleep } from './utils/util';
 
 dotenv.config();
 
@@ -113,15 +107,6 @@ v2Routes.use(v2UsersRouter);
 
 //   console.log('---------------------');
 // });
-
-cron.schedule('*/5 * * * *', async () => {
-  console.log('---------------------');
-  console.log(`Running cron (${new Date().toISOString()})`);
-
-  await flushRedirectStatsQueue();
-
-  console.log('---------------------');
-});
 
 Sentry.setupExpressErrorHandler(app);
 app.use(errorMiddleware);
