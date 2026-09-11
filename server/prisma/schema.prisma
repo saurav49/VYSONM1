@@ -15,71 +15,71 @@ enum Tier {
 }
 
 model UrlShortener {
-  id          Int      @id @default(autoincrement())
-  user        User?     @relation(fields: [userId], references: [id])
-  userId      Int?
-  originalUrl String   
-  shortCode   String   @unique
-  password    String?
-  clicks      Int      @default(0)
+  id             Int       @id @default(autoincrement())
+  user           User?     @relation(fields: [userId], references: [id])
+  userId         Int?
+  originalUrl    String
+  shortCode      String    @unique
+  password       String?
+  clicks         Int       @default(0)
   lastAccessedAt DateTime? @db.Timestamptz(6)
-  expiryDate DateTime? @db.Timestamptz(6)
-  
-  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
-  deletedAt   DateTime? @db.Timestamptz(6)
+  expiryDate     DateTime? @db.Timestamptz(6)
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  deletedAt DateTime? @db.Timestamptz(6)
 }
 
 model User {
-  id      Int @id @default(autoincrement())
-  email   String @unique
-  name    String?
-  apiKey  String @unique
+  id       Int            @id @default(autoincrement())
+  email    String         @unique
+  name     String?
+  apiKey   String         @unique
   shortens UrlShortener[]
-  tier     Tier  @default(FREE)
-  
-  file     String?
-  thumbnail String? 
+  tier     Tier           @default(FREE)
 
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  deletedAt   DateTime? @db.Timestamptz(6)
+  file      String?
+  thumbnail String?
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  deletedAt DateTime? @db.Timestamptz(6)
 }
 
 model RequestLogging {
-  id      Int @id @default(autoincrement())
-  method   String?
-  timestamp    DateTime? @default(now()) @db.Timestamptz(6)
-  userAgent    String?
-  url    String?
-  ip    String?
+  id        Int       @id @default(autoincrement())
+  method    String?
+  timestamp DateTime? @default(now()) @db.Timestamptz(6)
+  userAgent String?
+  url       String?
+  ip        String?
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
 }
 
 model ProcessedTask {
-  taskId        String    @id
-  processedAt   DateTime  @default(now())
-  event         String
+  taskId      String   @id
+  processedAt DateTime @default(now())
+  event       String
 }
 
 model ImageProcessingAggregate {
-  taskId                String    @id
-  userId                Int
-  thumbnailReady        Boolean   @default(false)
-  thumbnailCompletedAt  DateTime?
-  safetyCheckCompleted  Boolean   @default(false)
+  taskId                 String    @id
+  userId                 Int
+  thumbnailReady         Boolean   @default(false)
+  thumbnailCompletedAt   DateTime?
+  safetyCheckCompleted   Boolean   @default(false)
   safetyCheckCompletedAt DateTime?
-  notificationTriggered Boolean   @default(false)
-  timedOut              Boolean   @default(false)
-  manualReviewTriggered Boolean   @default(false)
-  deadlineAt            DateTime
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  notificationTriggered  Boolean   @default(false)
+  timedOut               Boolean   @default(false)
+  manualReviewTriggered  Boolean   @default(false)
+  deadlineAt             DateTime
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   @@index([deadlineAt])
 }
 
 model InventoryItem {
-  sku               String @id
+  sku               String   @id
   availableQuantity Int
   updatedAt         DateTime @updatedAt
 }
