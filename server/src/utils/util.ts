@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import path from 'path';
 import fs from 'fs/promises';
 import {
+  DEFAULT_QUEUE_CONFIG,
   FIFO_QUEUE_KEY,
   ImageUploadQueueTask,
   MAX_CACHE_SIZE,
@@ -13,6 +14,14 @@ import {
 import { TaskQueueAction } from './enums';
 import { getAnalytics } from '../modules/analytics/analytics.service';
 import { Response } from 'express';
+import { notificationQueue } from './queue';
+import {
+  handleImageAggregationTimeout as orchestrateImageAggregationTimeout,
+  markImageStepCompleted as orchestrateImageStepCompletion,
+  type ImageAggregationDependencies,
+  type ImageAggregationStep,
+  type ImageTimeoutDependencies,
+} from './image-aggregation';
 
 async function deleteCache(code: string) {
   await redis.del(`shortCode:${code}`);
@@ -197,6 +206,160 @@ async function broadcastSSELeaderboard() {
     sendSse(client, 'leaderboard_update', leaderboard);
   }
 }
+async function markImageStepCompleted(
+  taskId: string,
+  userId: number,
+  step: ImageAggregationStep,
+  dependencies: ImageAggregationDependencies = imageAggregationDependencies,
+) {
+  return orchestrateImageStepCompletion(taskId, userId, step, dependencies);
+}
+
+const imageAggregationDependencies: ImageAggregationDependencies = {
+  updateAndClaim: async (taskId, userId, step) =>
+    prisma.$transaction(async (tx) => {
+      const completedAt = new Date();
+      await tx.imageProcessingAggregate.updateMany({
+        where:
+          step === 'thumbnail'
+            ? { taskId, userId, thumbnailReady: false }
+            : { taskId, userId, safetyCheckCompleted: false },
+        data:
+          step === 'thumbnail'
+            ? { thumbnailReady: true, thumbnailCompletedAt: completedAt }
+            : {
+                safetyCheckCompleted: true,
+                safetyCheckCompletedAt: completedAt,
+              },
+      });
+
+      const aggregate = await tx.imageProcessingAggregate.findUnique({
+        where: { taskId },
+      });
+      if (!aggregate || aggregate.userId !== userId) {
+        throw new Error(`Image processing aggregate ${taskId} was not found`);
+      }
+      const completedWithinDeadline =
+        aggregate.thumbnailCompletedAt !== null &&
+        aggregate.safetyCheckCompletedAt !== null &&
+        aggregate.thumbnailCompletedAt <= aggregate.deadlineAt &&
+        aggregate.safetyCheckCompletedAt <= aggregate.deadlineAt;
+
+      if (!completedWithinDeadline) return false;
+
+      const claimed = await tx.imageProcessingAggregate.updateMany({
+        where: {
+          taskId,
+          userId,
+          thumbnailReady: true,
+          safetyCheckCompleted: true,
+          notificationTriggered: false,
+          timedOut: false,
+        },
+        data: { notificationTriggered: true },
+      });
+
+      return claimed.count === 1;
+    }),
+  enqueueNotification: async (taskId, userId) => {
+    await notificationQueue.add(
+      'notify-user',
+      {
+        event: TaskQueueAction.IMAGE_PROCESSING_COMPLETED,
+        taskId,
+        userId,
+      },
+      {
+        ...DEFAULT_QUEUE_CONFIG,
+        jobId: `${taskId}:notification`,
+      },
+    );
+  },
+  releaseClaim: async (taskId, userId) => {
+    await prisma.imageProcessingAggregate.updateMany({
+      where: { taskId, userId, notificationTriggered: true },
+      data: { notificationTriggered: false },
+    });
+  },
+};
+
+async function handleImageAggregationTimeout(
+  taskId: string,
+  userId: number,
+  now: Date = new Date(),
+  dependencies: ImageTimeoutDependencies = imageTimeoutDependencies,
+) {
+  return orchestrateImageAggregationTimeout(taskId, userId, now, dependencies);
+}
+
+const imageTimeoutDependencies: ImageTimeoutDependencies = {
+  claimOutcome: async (taskId, userId, now) =>
+    prisma.$transaction(async (tx) => {
+      // Take a row lock through an update before classifying the outcome. This
+      // serializes the timeout decision with either upstream completion.
+      const locked = await tx.imageProcessingAggregate.updateMany({
+        where: { taskId, userId, notificationTriggered: false, timedOut: false },
+        data: { updatedAt: now },
+      });
+      if (locked.count !== 1) return null;
+
+      const aggregate = await tx.imageProcessingAggregate.findUniqueOrThrow({
+        where: { taskId },
+      });
+      if (aggregate.deadlineAt > now) return null;
+
+      const completedWithinDeadline =
+        aggregate.thumbnailCompletedAt !== null &&
+        aggregate.safetyCheckCompletedAt !== null &&
+        aggregate.thumbnailCompletedAt <= aggregate.deadlineAt &&
+        aggregate.safetyCheckCompletedAt <= aggregate.deadlineAt;
+
+      const completed = await tx.imageProcessingAggregate.updateMany({
+        where: {
+          taskId,
+          userId,
+          notificationTriggered: false,
+          timedOut: false,
+        },
+        data: completedWithinDeadline
+          ? { notificationTriggered: true }
+          : { timedOut: true, manualReviewTriggered: true },
+      });
+      if (completed.count !== 1) return null;
+      return completedWithinDeadline ? 'completed' : 'manual-review';
+    }),
+  enqueueCompletion: imageAggregationDependencies.enqueueNotification,
+  enqueueManualReview: async (taskId, userId) => {
+    await notificationQueue.add(
+      'manual-review',
+      {
+        event: TaskQueueAction.IMAGE_PROCESSING_MANUAL_REVIEW,
+        taskId,
+        userId,
+        reason: 'Image processing steps did not complete before the deadline',
+      },
+      {
+        ...DEFAULT_QUEUE_CONFIG,
+        jobId: `${taskId}:manual-review`,
+      },
+    );
+  },
+  releaseOutcome: async (taskId, userId, outcome) => {
+    if (outcome === 'completed') {
+      await imageAggregationDependencies.releaseClaim(taskId, userId);
+      return;
+    }
+    await prisma.imageProcessingAggregate.updateMany({
+      where: {
+        taskId,
+        userId,
+        timedOut: true,
+        manualReviewTriggered: true,
+      },
+      data: { timedOut: false, manualReviewTriggered: false },
+    });
+  },
+};
 export {
   isValidEmail,
   isValidDateTime,
@@ -217,4 +380,6 @@ export {
   sendSse,
   broadcastSSELeaderboard,
   sendWebhookDataHandler,
+  markImageStepCompleted,
+  handleImageAggregationTimeout,
 };

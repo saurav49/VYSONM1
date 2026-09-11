@@ -1,5 +1,9 @@
 import crypto, { randomUUID } from 'crypto';
-import { DEFAULT_QUEUE_CONFIG, PAGE_SIZE } from '../../utils/constants';
+import {
+  DEFAULT_QUEUE_CONFIG,
+  IMAGE_PROCESSING_TIMEOUT,
+  PAGE_SIZE,
+} from '../../utils/constants';
 import { isValidEmail, sleep, thumbnailImagePath } from '../../utils/util';
 import { badRequest, unauthorized } from '../../shared/errors/httpErrors';
 import {
@@ -7,12 +11,17 @@ import {
   findUser,
   findUserWithPaginatedShortensByApiKey,
   findUserWithShortensByApiKey,
+  createImageProcessingAggregate,
   softDeleteUserByApiKey,
   uploadf,
 } from './users.repository';
 import { CreateUserInput, User } from './users.types';
 import { TaskQueueAction } from '../../utils/enums';
-import { imageProcessingQueue } from '../../utils/queue';
+import {
+  imageAggregationTimeoutQueue,
+  imageProcessingQueue,
+  imageSafetyQueue,
+} from '../../utils/queue';
 
 function mapShortens(shortens: any[]) {
   return shortens.map((shorten) => ({
@@ -28,12 +37,19 @@ function mapShortens(shortens: any[]) {
 async function enqueueThumbnailTask({
   id,
   filePath,
+  userId,
 }: {
   id: number;
   filePath: string;
+  userId: number;
 }) {
   const outputPath = await thumbnailImagePath(id);
   const taskId = `${id}_${randomUUID()}`;
+  await createImageProcessingAggregate({
+    taskId,
+    userId,
+    deadlineAt: new Date(Date.now() + IMAGE_PROCESSING_TIMEOUT),
+  });
   await imageProcessingQueue.add(
     'generate-thumbnail',
     {
@@ -41,13 +57,40 @@ async function enqueueThumbnailTask({
         imagePath: outputPath,
         file: filePath,
         id,
+        userId,
       },
       taskId,
       event: TaskQueueAction.IMAGE_UPLOAD,
     },
     {
       ...DEFAULT_QUEUE_CONFIG,
-      jobId: taskId,
+      jobId: `${taskId}:image-processing`,
+    },
+  );
+  await imageSafetyQueue.add(
+    'image-safety-check',
+    {
+      data: {
+        imagePath: outputPath,
+        file: filePath,
+        id,
+        userId,
+      },
+      taskId,
+      event: TaskQueueAction.IMAGE_UPLOAD,
+    },
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      jobId: `${taskId}:safety-check`,
+    },
+  );
+  await imageAggregationTimeoutQueue.add(
+    'check-image-processing-deadline',
+    { taskId, userId },
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      delay: IMAGE_PROCESSING_TIMEOUT,
+      jobId: `${taskId}:timeout`,
     },
   );
 }
@@ -94,9 +137,10 @@ async function fileUpload(
 
   console.log(`Uploaded file saved for user ${user.id}: ${file.path}`);
 
-  enqueueThumbnailTask({
+  await enqueueThumbnailTask({
     id: res.id,
     filePath: file.path,
+    userId: user.id,
   });
 
   console.log(`Thumbnail task queued for user ${user.id}`);

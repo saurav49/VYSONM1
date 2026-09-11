@@ -14,6 +14,7 @@ type GenerateThumbnailTask = {
   imagePath: string;
   file: string;
   id: number;
+  userId: number;
 };
 
 type IncrementStatsTask = {
@@ -33,14 +34,46 @@ type IncrementStatsQueueTask = {
   taskId: string;
 };
 
-type TaskQueueTask = ImageUploadQueueTask | IncrementStatsQueueTask;
+type OrderPlacedV1 = {
+  event: TaskQueueAction.ORDER_PLACED;
+  eventVersion: 1;
+  orderId: string;
+  userId: string;
+  totalAmount: number;
+  items: any[];
+};
+
+type OrderPlacedV2 = {
+  event: TaskQueueAction.ORDER_PLACED;
+  eventVersion: 2;
+  orderId: string;
+  userId: string;
+  totalAmount: number;
+  items: any[];
+
+  deviceFingerprint?: string;
+  ipAddress?: string;
+  paymentMethodBin?: string;
+};
+
+type TaskQueueTask =
+  | ImageUploadQueueTask
+  | IncrementStatsQueueTask
+  | OrderPlacedV1
+  | OrderPlacedV2;
 
 const SSE_CLIENTS = new Set<Response>();
 
 const REDIRECT_STATS = 'redirect-stats';
 const IMAGE_PROCESSING = 'image-processing';
+const IMAGE_SAFETY = 'image-safety';
+const IMAGE_AGGREGATION_TIMEOUT = 'image-aggregation-timeout';
 const NOTIFICATIONS = 'notifications';
 const DEAD_LETTER = 'dead-letter';
+const ORDER_PROCESSING = 'order-processing';
+const INVENTORY_PROCESSING = 'inventory-processing';
+
+const IMAGE_PROCESSING_TIMEOUT = 5 * 60 * 1000;
 
 const DEFAULT_QUEUE_CONFIG = {
   removeOnComplete: {
@@ -77,6 +110,11 @@ export {
   DEAD_LETTER,
   DEFAULT_QUEUE_CONFIG,
   DEFAULT_DEAD_LETTER_QUEUE_CONFIG,
+  ORDER_PROCESSING,
+  IMAGE_PROCESSING_TIMEOUT,
+  IMAGE_SAFETY,
+  IMAGE_AGGREGATION_TIMEOUT,
+  INVENTORY_PROCESSING,
 };
 export type {
   TaskQueueTask,
