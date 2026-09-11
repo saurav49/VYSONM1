@@ -22,34 +22,40 @@ jobs:
             echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> "$BASH_ENV"
             source "$BASH_ENV"
             bun --version
+            bunx --version
 
       - run:
           name: Install dependencies
           command: |
+            source "$BASH_ENV"
             cd server
             bun install --frozen-lockfile
 
       - run:
           name: Generate Prisma client
           command: |
+            source "$BASH_ENV"
             cd server
             bun run prisma:generate
 
       - run:
           name: Run lint
           command: |
+            source "$BASH_ENV"
             cd server
             bun run lint || true
 
       - run:
           name: Run tests with coverage
           command: |
+            source "$BASH_ENV"
             cd server
             bun run test:coverage
 
       - run:
           name: Build
           command: |
+            source "$BASH_ENV"
             cd server
             bun run build
 
@@ -75,10 +81,12 @@ jobs:
             echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> "$BASH_ENV"
             source "$BASH_ENV"
             bun --version
+            bunx --version
 
       - run:
           name: Deploy to Railway
           command: |
+            source "$BASH_ENV"
             bunx @railway/cli up ./server --path-as-root --ci \
               --project e1a98429-3abc-49f0-8792-d7661930968e \
               --environment production \
