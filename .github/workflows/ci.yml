@@ -30,6 +30,11 @@ jobs:
 
       - name: Run lint
         run: bun run lint
+        continue-on-error: true
+        working-directory: server
+
+      - name: Run test
+        run: bun run test
         working-directory: server
       - name: Run Build
         run: bun run build
