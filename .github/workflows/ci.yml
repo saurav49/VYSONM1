@@ -47,7 +47,7 @@ jobs:
 
       - name: Deploy to railway
         if: success() && github.ref == 'refs/heads/master'
-        uses: railwaapp/railway-deploy@v1
+        uses: railwayapp/railway-deploy@v1
         with:
           railway-token: ${{ secrets.RAILWAY_TOKEN }}
           service: giving-sparkle
