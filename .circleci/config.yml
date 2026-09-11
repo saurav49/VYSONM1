@@ -1,0 +1,96 @@
+version: '2.1'
+jobs:
+  verify:
+    docker:
+      - image: cimg/base:current
+
+    working_directory: ~/project
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - v1-bun-{{ checksum "server/bun.lock" }}
+            - v1-bun-
+
+      - run:
+          name: Install Bun
+          command: |
+            curl -fsSL https://bun.sh/install | bash
+            echo 'export BUN_INSTALL="$HOME/.bun"' >> "$BASH_ENV"
+            echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> "$BASH_ENV"
+            source "$BASH_ENV"
+            bun --version
+
+      - run:
+          name: Install dependencies
+          command: |
+            cd server
+            bun install --frozen-lockfile
+
+      - run:
+          name: Generate Prisma client
+          command: |
+            cd server
+            bun run prisma:generate
+
+      - run:
+          name: Run lint
+          command: |
+            cd server
+            bun run lint || true
+
+      - run:
+          name: Run tests with coverage
+          command: |
+            cd server
+            bun run test:coverage
+
+      - run:
+          name: Build
+          command: |
+            cd server
+            bun run build
+
+      - save_cache:
+          key: v1-bun-{{ checksum "server/bun.lock" }}
+          paths:
+            - ~/.bun/install/cache
+
+  deploy:
+    docker:
+      - image: cimg/base:current
+
+    working_directory: ~/project
+
+    steps:
+      - checkout
+
+      - run:
+          name: Install Bun
+          command: |
+            curl -fsSL https://bun.sh/install | bash
+            echo 'export BUN_INSTALL="$HOME/.bun"' >> "$BASH_ENV"
+            echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> "$BASH_ENV"
+            source "$BASH_ENV"
+            bun --version
+
+      - run:
+          name: Deploy to Railway
+          command: |
+            bunx @railway/cli up ./server --path-as-root --ci \
+              --project e1a98429-3abc-49f0-8792-d7661930968e \
+              --environment production \
+              --service 8d038ed5-e911-41c4-8cef-22af66465d0b
+
+workflows:
+  ci-cd:
+    jobs:
+      - verify
+      - deploy:
+          requires:
+            - verify
+          filters:
+            branches:
+              only: main
