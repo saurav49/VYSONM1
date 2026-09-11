@@ -1,0 +1,268 @@
+import crypto, { randomUUID } from 'crypto';
+import {
+  DEFAULT_QUEUE_CONFIG,
+  IMAGE_PROCESSING_TIMEOUT,
+  PAGE_SIZE,
+} from '../../utils/constants';
+import { isValidEmail, sleep, thumbnailImagePath } from '../../utils/util';
+import { badRequest, unauthorized } from '../../shared/errors/httpErrors';
+import {
+  createUser,
+  findUser,
+  findUserWithPaginatedShortensByApiKey,
+  findUserWithShortensByApiKey,
+  createImageProcessingAggregate,
+  softDeleteUserByApiKey,
+  uploadf,
+} from './users.repository';
+import { CreateUserInput, User } from './users.types';
+import { TaskQueueAction } from '../../utils/enums';
+import {
+  imageAggregationTimeoutQueue,
+  imageProcessingQueue,
+  imageSafetyQueue,
+} from '../../utils/queue';
+
+function mapShortens(shortens: any[]) {
+  return shortens.map((shorten) => ({
+    id: shorten.id,
+    originalUrl: shorten.originalUrl,
+    shortCode: shorten.shortCode,
+    clicks: shorten.clicks,
+    lastAccessedAt: shorten.lastAccessedAt,
+    expiryDate: shorten.expiryDate,
+  }));
+}
+
+async function enqueueThumbnailTask({
+  id,
+  filePath,
+  userId,
+}: {
+  id: number;
+  filePath: string;
+  userId: number;
+}) {
+  const outputPath = await thumbnailImagePath(id);
+  const taskId = `${id}_${randomUUID()}`;
+  await createImageProcessingAggregate({
+    taskId,
+    userId,
+    deadlineAt: new Date(Date.now() + IMAGE_PROCESSING_TIMEOUT),
+  });
+  await imageProcessingQueue.add(
+    'generate-thumbnail',
+    {
+      data: {
+        imagePath: outputPath,
+        file: filePath,
+        id,
+        userId,
+      },
+      taskId,
+      event: TaskQueueAction.IMAGE_UPLOAD,
+    },
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      jobId: `${taskId}:image-processing`,
+    },
+  );
+  await imageSafetyQueue.add(
+    'image-safety-check',
+    {
+      data: {
+        imagePath: outputPath,
+        file: filePath,
+        id,
+        userId,
+      },
+      taskId,
+      event: TaskQueueAction.IMAGE_UPLOAD,
+    },
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      jobId: `${taskId}:safety-check`,
+    },
+  );
+  await imageAggregationTimeoutQueue.add(
+    'check-image-processing-deadline',
+    { taskId, userId },
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      delay: IMAGE_PROCESSING_TIMEOUT,
+      jobId: `${taskId}:timeout`,
+    },
+  );
+}
+
+async function createNewUser({ email, name }: CreateUserInput) {
+  if (!email || !name) {
+    throw unauthorized('Email and name are required');
+  }
+
+  if (!isValidEmail(email)) {
+    throw unauthorized('Invalid email');
+  }
+
+  const apiKey = crypto.randomBytes(32).toString('hex');
+  const result = await createUser({
+    email,
+    name,
+    apiKey,
+  });
+
+  return {
+    id: result.id,
+    apiKey: result.apiKey,
+  };
+}
+
+async function fileUpload(
+  user: User | undefined,
+  file: Express.Multer.File | undefined,
+) {
+  if (!user || !user?.id) {
+    throw badRequest('Invalid user');
+  }
+  if (!file || !file?.path) {
+    throw badRequest('File upload failed');
+  }
+
+  console.log(`Upload request received for user ${user.id}`);
+
+  const res = await uploadf({
+    id: user.id,
+    path: file.path,
+  });
+
+  console.log(`Uploaded file saved for user ${user.id}: ${file.path}`);
+
+  await enqueueThumbnailTask({
+    id: res.id,
+    filePath: file.path,
+    userId: user.id,
+  });
+
+  console.log(`Thumbnail task queued for user ${user.id}`);
+  console.log(
+    `Returning upload response before thumbnail generation for user ${user.id}`,
+  );
+
+  return {
+    message: 'File uploaded; thumbnail generation queued',
+  };
+}
+
+async function getUserShortList(apiKey: string) {
+  const userWithUrls = await findUserWithShortensByApiKey(apiKey);
+
+  if (!userWithUrls) {
+    throw unauthorized('User not found');
+  }
+
+  return {
+    id: userWithUrls.id,
+    email: userWithUrls.email,
+    name: userWithUrls.name,
+    tier: userWithUrls.tier,
+    shortens: mapShortens(userWithUrls.shortens),
+  };
+}
+
+async function getPaginatedUserShortList({
+  apiKey,
+  page,
+}: {
+  apiKey: string;
+  page?: unknown;
+}) {
+  if (!page) {
+    throw badRequest('Page number required');
+  }
+
+  const pageNo = Number(page);
+  if (!Number.isInteger(pageNo) || pageNo < 1) {
+    throw badRequest('Page no should be positive');
+  }
+
+  const userWithUrls = await findUserWithPaginatedShortensByApiKey({
+    apiKey,
+    page: pageNo,
+    pageSize: PAGE_SIZE,
+  });
+
+  if (!userWithUrls) {
+    throw unauthorized('User not found');
+  }
+
+  return {
+    id: userWithUrls.id,
+    email: userWithUrls.email,
+    name: userWithUrls.name,
+    tier: userWithUrls.tier,
+    shortens: mapShortens(userWithUrls.shortens),
+    pagination: {
+      page: pageNo,
+      pageSize: PAGE_SIZE,
+    },
+  };
+}
+
+async function deleteUser(apiKey: string) {
+  await softDeleteUserByApiKey(apiKey);
+}
+
+async function getThumbnailPerUser({ apiKey }: { apiKey: string }) {
+  const user = await findUser({ apiKey });
+  if (!user) {
+    throw unauthorized('User not found');
+  }
+  if (!user.file) {
+    return {
+      pollStatus: 'not_uploaded',
+      thumbnail: null,
+    };
+  }
+  if (user.thumbnail) {
+    return { pollStatus: 'done', thumbnail: user.thumbnail };
+  }
+  return { pollStatus: 'pending', thumbnail: user.thumbnail };
+}
+async function getThumbnailPerUserWithWait({ apiKey }: { apiKey: string }) {
+  let user = await findUser({ apiKey });
+  if (!user) {
+    throw unauthorized('User not found');
+  }
+  if (!user.file) {
+    return {
+      pollStatus: 'not_uploaded',
+      thumbnail: null,
+    };
+  }
+  if (user && user.thumbnail) {
+    return { pollStatus: 'done', thumbnail: user.thumbnail };
+  }
+  const startedAt = Date.now();
+  const timeToWaitInMs = 15000;
+  const sleepTimeInMs = 1000;
+
+  while (Date.now() - startedAt < timeToWaitInMs) {
+    user = await findUser({ apiKey });
+    if (user && user.thumbnail) {
+      return { pollStatus: 'done', thumbnail: user.thumbnail };
+    }
+    await sleep(sleepTimeInMs);
+  }
+  return { pollStatus: 'pending', thumbnail: user?.thumbnail };
+}
+
+export {
+  createNewUser,
+  deleteUser,
+  enqueueThumbnailTask,
+  getPaginatedUserShortList,
+  getUserShortList,
+  fileUpload,
+  getThumbnailPerUser,
+  getThumbnailPerUserWithWait,
+};
