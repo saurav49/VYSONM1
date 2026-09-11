@@ -11,22 +11,27 @@ import {
   REDIRECT_STATS,
 } from './constants';
 
-const redirectStatsQueue = new Queue(REDIRECT_STATS, { connection: redis });
-const imageProcessingQueue = new Queue(IMAGE_PROCESSING, {
-  connection: redis,
-});
-const imageSafetyQueue = new Queue(IMAGE_SAFETY, {
-  connection: redis,
-});
-const imageAggregationTimeoutQueue = new Queue(IMAGE_AGGREGATION_TIMEOUT, {
-  connection: redis,
-});
-const notificationQueue = new Queue(NOTIFICATIONS, { connection: redis });
-const deadLetterQueue = new Queue(DEAD_LETTER, { connection: redis });
-const orderProcessingQueue = new Queue(ORDER_PROCESSING, { connection: redis });
-const inventoryProcessingQueue = new Queue(INVENTORY_PROCESSING, {
-  connection: redis,
-});
+/**
+ * Unit tests exercise orchestration through injected dependencies and should
+ * not need a Redis daemon merely to import the application.  Keep the queue
+ * surface used by the services, while real environments retain BullMQ.
+ */
+const createQueue = (name: string) => {
+  if (process.env.NODE_ENV === 'test') {
+    return { add: async () => undefined } as unknown as Pick<Queue, 'add'>;
+  }
+
+  return new Queue(name, { connection: redis });
+};
+
+const redirectStatsQueue = createQueue(REDIRECT_STATS);
+const imageProcessingQueue = createQueue(IMAGE_PROCESSING);
+const imageSafetyQueue = createQueue(IMAGE_SAFETY);
+const imageAggregationTimeoutQueue = createQueue(IMAGE_AGGREGATION_TIMEOUT);
+const notificationQueue = createQueue(NOTIFICATIONS);
+const deadLetterQueue = createQueue(DEAD_LETTER);
+const orderProcessingQueue = createQueue(ORDER_PROCESSING);
+const inventoryProcessingQueue = createQueue(INVENTORY_PROCESSING);
 
 export {
   redirectStatsQueue,

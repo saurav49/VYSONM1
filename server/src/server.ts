@@ -6,6 +6,7 @@ import { getAnalytics } from './modules/analytics/analytics.service';
 import { findUser } from './modules/users/users.repository';
 import { Server } from 'socket.io';
 import { Tier } from './utils/enums';
+import { registerLeaderboardBroadcaster } from './utils/leaderboard-broadcast';
 
 export async function broadcastLeaderboard() {
   const leaderboard = await getAnalytics();
@@ -29,6 +30,8 @@ const io = new Server(server, {
     origin: 'http://localhost:5173',
   },
 });
+
+registerLeaderboardBroadcaster(broadcastLeaderboard);
 
 io.use(async (socket, next) => {
   const apiKey = socket.handshake.auth.apiKey;

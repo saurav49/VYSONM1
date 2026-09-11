@@ -33,9 +33,10 @@ jobs:
         continue-on-error: true
         working-directory: server
 
-      - name: Run test
-        run: bun run test
+      - name: Run test coverage
+        run: bun run test:coverage
         working-directory: server
+
       - name: Run Build
         run: bun run build
         working-directory: server

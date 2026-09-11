@@ -11,7 +11,7 @@ import {
   update,
 } from './short-codes.service';
 import { broadcastSSELeaderboard, retryLogic } from '../../utils/util';
-import { broadcastLeaderboard } from '../../server';
+import { broadcastLeaderboard } from '../../utils/leaderboard-broadcast';
 
 function getAuthenticatedUser(req: Request) {
   if (!req.user) {

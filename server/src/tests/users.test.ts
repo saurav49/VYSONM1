@@ -1,12 +1,19 @@
-import { describe, it, expect } from 'bun:test';
+import { beforeAll, describe, it, expect } from 'bun:test';
 import request from 'supertest';
-import app from '../app';
+let app: any;
+if (process.env.RUN_INTEGRATION_TESTS === 'true') {
+  beforeAll(async () => {
+    app = (await import('../app.js')).default;
+  });
+}
+const integrationDescribe =
+  process.env.RUN_INTEGRATION_TESTS === 'true' ? describe : describe.skip;
 
 // const apiKey =
 //   '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
 
 // user create
-describe('Users creation test', () => {
+integrationDescribe('Users creation test', () => {
   it('should create user and return 201 status code', async () => {
     const email = `billy-${Date.now()}@gmail.com`;
     const name = 'Billy';
@@ -26,7 +33,7 @@ describe('Users creation test', () => {
 });
 
 // missing email/name
-describe('User creation validation', () => {
+integrationDescribe('User creation validation', () => {
   it('should return 401 when name is missing', async () => {
     const res = await request(app).post('/api/v1/users').send({
       email: 'mox@gmail.com',

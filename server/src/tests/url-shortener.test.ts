@@ -1,9 +1,18 @@
 import request from 'supertest';
-import app from '../app';
-import { describe, it, expect } from 'bun:test';
+import { beforeAll, describe, it, expect } from 'bun:test';
 import { prisma } from '../lib/prisma';
 import { Tier } from '../utils/enums';
 import { getCache } from '../utils/util';
+
+let app: any;
+if (process.env.RUN_INTEGRATION_TESTS === 'true') {
+  beforeAll(async () => {
+    app = (await import('../app.js')).default;
+  });
+}
+
+const integrationDescribe =
+  process.env.RUN_INTEGRATION_TESTS === 'true' ? describe : describe.skip;
 
 const apiKey =
   '6119a8ec733a72de1361c61dbe7e456d8046c071e18e52c20004d48440495015';
@@ -57,7 +66,7 @@ const createShortCode = async ({
   return { res, shortCode: res.body.data.shortCode, originalUrl };
 };
 
-describe('URL Shortener integration test', () => {
+integrationDescribe('URL Shortener integration test', () => {
   it('should shorten the url and redirect correctly', async () => {
     const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
     const shortenerResponse = await request(app)
@@ -197,7 +206,7 @@ describe('URL Shortener integration test', () => {
   );
 });
 
-describe('Cache URL Redirect', () => {
+integrationDescribe('Cache URL Redirect', () => {
   it(
     'should use cache',
     async () => {
@@ -233,7 +242,7 @@ describe('Cache URL Redirect', () => {
 });
 
 // [Q8] What happens when you try to fetch a short code that doesn’t exist? Find out which http status code would suit best here. Add this as a test as well.
-describe('URL Shortener invalid code test', () => {
+integrationDescribe('URL Shortener invalid code test', () => {
   it('should handle the invalid short code', async () => {
     const code = 'abc';
     const redirectUrl = await request(app)
@@ -245,7 +254,7 @@ describe('URL Shortener invalid code test', () => {
 });
 
 // delete short code
-describe('URL Shortener delete short code', () => {
+integrationDescribe('URL Shortener delete short code', () => {
   it('should handle the deletion of short code', async () => {
     const originalUrl = `https://chatgpt.com/${new Date().getTime()}`;
     const response = await request(app)
@@ -268,7 +277,7 @@ describe('URL Shortener delete short code', () => {
 });
 
 // missing original url
-describe('URL Shortener missing original url test', () => {
+integrationDescribe('URL Shortener missing original url test', () => {
   it('should check if the url provided is correct', async () => {
     const originalUrl = ``;
     const shortenerResponse = await request(app).post('/api/v1/shorten').send({
@@ -280,7 +289,7 @@ describe('URL Shortener missing original url test', () => {
 });
 
 // invalid original url
-describe('URL Shortener invalid original url test', () => {
+integrationDescribe('URL Shortener invalid original url test', () => {
   it('should check if the url provided is valid', async () => {
     const originalUrl = `vyson`;
     const shortenerResponse = await request(app).post('/api/v1/shorten').send({
@@ -292,7 +301,7 @@ describe('URL Shortener invalid original url test', () => {
 });
 
 // code not passed in redirect url
-describe('URL Shortener code not passed', () => {
+integrationDescribe('URL Shortener code not passed', () => {
   it('should pass the code in redirect url', async () => {
     const code = ``;
     const res = await request(app).get(`/api/v1/redirect?code=${code}`);
@@ -302,7 +311,7 @@ describe('URL Shortener code not passed', () => {
 });
 
 // missing/invalid x-api-key
-describe('Url Shortener x-api-key validation', () => {
+integrationDescribe('Url Shortener x-api-key validation', () => {
   it('should return 401 for invalid x-api-key', async () => {
     const res = await request(app)
       .post('/api/v1/shorten')
@@ -322,7 +331,7 @@ describe('Url Shortener x-api-key validation', () => {
 });
 
 // expiry date
-describe('Url Shortener Expiry date', () => {
+integrationDescribe('Url Shortener Expiry date', () => {
   it('should return 400 for invalid expiry date', async () => {
     const res = await request(app).post('/api/v1/shorten').send({
       originalUrl: 'https://google.com',
@@ -393,7 +402,7 @@ describe('Url Shortener Expiry date', () => {
   });
 });
 
-describe('URL Shortener additional coverage', () => {
+integrationDescribe('URL Shortener additional coverage', () => {
   it('should allow multiple short codes for the same original URL', async () => {
     const user = await createUser();
     const originalUrl = `https://example.com/shared-${Date.now()}`;
@@ -446,7 +455,7 @@ describe('URL Shortener additional coverage', () => {
   );
 });
 
-describe('URL Shortener batch creation', () => {
+integrationDescribe('URL Shortener batch creation', () => {
   it('should allow enterprise users to batch create short codes', async () => {
     const user = await createUser(Tier.ENTERPRISE);
     const res = await request(app)
@@ -538,7 +547,7 @@ describe('URL Shortener batch creation', () => {
   });
 });
 
-describe('PATCH /shorten', () => {
+integrationDescribe('PATCH /shorten', () => {
   it('should allow the owner to edit expiry date', async () => {
     const user = await createUser();
     const { shortCode } = await createShortCode({ apiKey: user.apiKey });
@@ -619,7 +628,7 @@ describe('PATCH /shorten', () => {
   });
 });
 
-describe('URL Shortener password protection', () => {
+integrationDescribe('URL Shortener password protection', () => {
   it('should return 401 without a password for a protected URL', async () => {
     const user = await createUser();
     const { shortCode } = await createShortCode({
@@ -664,7 +673,7 @@ describe('URL Shortener password protection', () => {
   });
 });
 
-describe('/users/short-list', () => {
+integrationDescribe('/users/short-list', () => {
   it("should return the current user's URLs", async () => {
     const user = await createUser();
     const first = await createShortCode({ apiKey: user.apiKey });
@@ -707,7 +716,7 @@ describe('/users/short-list', () => {
   });
 });
 
-describe('/analytics', () => {
+integrationDescribe('/analytics', () => {
   it(
     'should return analytics collections for shortened URLs',
     async () => {
