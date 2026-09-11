@@ -22,7 +22,6 @@ jobs:
             echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> "$BASH_ENV"
             source "$BASH_ENV"
             bun --version
-            bunx --version
 
       - run:
           name: Install dependencies
@@ -81,13 +80,12 @@ jobs:
             echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> "$BASH_ENV"
             source "$BASH_ENV"
             bun --version
-            bunx --version
 
       - run:
           name: Deploy to Railway
           command: |
             source "$BASH_ENV"
-            bunx @railway/cli up ./server --path-as-root --ci \
+            bun x @railway/cli up ./server --path-as-root --ci \
               --project e1a98429-3abc-49f0-8792-d7661930968e \
               --environment production \
               --service 8d038ed5-e911-41c4-8cef-22af66465d0b

@@ -48,6 +48,6 @@ jobs:
       - name: Deploy to railway
         if: success() && github.ref == 'refs/heads/main'
         working-directory: .
-        run: bunx @railway/cli up ./server --path-as-root --ci --project e1a98429-3abc-49f0-8792-d7661930968e --environment production --service 8d038ed5-e911-41c4-8cef-22af66465d0b
+        run: bun x @railway/cli up ./server --path-as-root --ci --project e1a98429-3abc-49f0-8792-d7661930968e --environment production --service 8d038ed5-e911-41c4-8cef-22af66465d0b
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
