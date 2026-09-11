@@ -46,8 +46,8 @@ jobs:
         working-directory: server
 
       - name: Deploy to railway
-        if: success() && github.ref == 'refs/heads/master'
-        uses: railwayapp/railway-deploy@v1
-        with:
-          railway-token: ${{ secrets.RAILWAY_TOKEN }}
-          service: giving-sparkle
+        if: success() && github.ref == 'refs/heads/main'
+        working-directory: .
+        run: bunx @railway/cli up ./server --path-as-root --ci --service giving-sparkle
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
