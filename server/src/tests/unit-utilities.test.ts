@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { ZodError, z } from 'zod';
 import { redis } from '../config/redis';
+import { prisma } from '../db/prisma';
+import { getAnalytics } from '../modules/analytics/analytics.service';
 import { AppError } from '../shared/errors/AppError';
 import {
   badRequest,
@@ -115,6 +117,28 @@ describe('response and error helpers', () => {
     expect(forbidden('no').statusCode).toBe(403);
     expect(notFound('no').statusCode).toBe(404);
     expect(conflict('no').statusCode).toBe(409);
+  });
+});
+
+describe('analytics service', () => {
+  it('returns each analytics collection from Prisma', async () => {
+    const calls: unknown[] = [];
+    const urlShortener = (prisma as any).urlShortener;
+    urlShortener.findMany = async (args: unknown) => {
+      calls.push(args);
+      return calls.length === 1 ? [{ shortCode: 'latest' }] : [{ shortCode: 'popular' }];
+    };
+    urlShortener.groupBy = async (args: unknown) => {
+      calls.push(args);
+      return [{ originalUrl: 'https://example.com', _count: { originalUrl: 2 } }];
+    };
+
+    await expect(getAnalytics() as Promise<any>).resolves.toEqual({
+      tenLatestUrlShortened: [{ shortCode: 'latest' }],
+      tenMostPopularUrl: [{ shortCode: 'popular' }],
+      tenMostShortenUrl: [{ originalUrl: 'https://example.com', _count: { originalUrl: 2 } }],
+    });
+    expect(calls).toHaveLength(3);
   });
 });
 
