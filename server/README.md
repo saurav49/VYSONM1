@@ -4,7 +4,7 @@ A minimal URL shortener service built with TypeScript, Express, and PostgreSQL.
 
 ## Endpoints
 
-The main API endpoint is `/api/v1`. Version 2 user endpoints are available under `/api/v2`.
+The main API endpoint is `/api/v1`. Version 2 user endpoints are available under `/api/v2`
 
 | Method   | Endpoint                       | Description                                                    |
 | -------- | ------------------------------ | -------------------------------------------------------------- |
