@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,6 +17,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
+
       - name: Cache Bun dependencies
         uses: actions/cache@v4
         with:
@@ -25,29 +27,43 @@ jobs:
             ${{ runner.os }}-bun-
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
         working-directory: server
+        run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: bun run prisma:generate
         working-directory: server
+        run: bun run prisma:generate
 
       - name: Run lint
+        working-directory: server
         run: bun run lint
         continue-on-error: true
-        working-directory: server
 
       - name: Run test coverage
+        working-directory: server
         run: bun run test:coverage
-        working-directory: server
 
-      - name: Run Build
+      - name: Build
+        working-directory: server
         run: bun run build
-        working-directory: server
 
-      - name: Deploy to railway
+      - name: Deploy to Railway
         if: success() && github.ref == 'refs/heads/main'
         working-directory: .
-        run: bun x @railway/cli up ./server --path-as-root --ci --project e1a98429-3abc-49f0-8792-d7661930968e --environment production --service 8d038ed5-e911-41c4-8cef-22af66465d0b
+        run: |
+          bun x @railway/cli up ./server --path-as-root --ci \
+            --project e1a98429-3abc-49f0-8792-d7661930968e \
+            --environment production \
+            --service 8d038ed5-e911-41c4-8cef-22af66465d0b
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Notify Discord if CI fails
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl --fail --silent --show-error \
+            --header "Content-Type: application/json" \
+            --data "{\"content\":\"❌ CI failed for ${GITHUB_REPOSITORY}\\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
+            "$DISCORD_WEBHOOK_URL"

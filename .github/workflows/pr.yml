@@ -104,13 +104,3 @@ jobs:
                 body,
               });
             }
-
-      - name: Notify Discord if PR checks fail
-        if: failure()
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          curl --fail --silent --show-error \
-            --header "Content-Type: application/json" \
-            --data "{\"content\":\"❌ PR checks failed for ${GITHUB_REPOSITORY}\\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
-            "$DISCORD_WEBHOOK_URL"
