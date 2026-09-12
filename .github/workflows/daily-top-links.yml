@@ -1,0 +1,42 @@
+name: Daily Top Links
+
+on:
+  schedule:
+    - cron: "4 19 * * *"
+      timezone: "Asia/Kolkata"
+  workflow_dispatch:
+
+jobs:
+  share-top-links:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get top links
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          curl --fail --silent --show-error \
+            "${API_BASE_URL}/api/v1/analytics" \
+            --output analytics.json
+
+          jq -r '
+            .data.tenMostPopularUrl[:10] |
+            if length == 0 then
+              "No links have been clicked yet."
+            else
+              to_entries[] |
+              "\(.key + 1). \(.value.shortCode) — \(.value.clicks) clicks\n<\(.value.originalUrl)>"
+            end
+          ' analytics.json > top-links.txt
+
+      - name: Share top links on Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="$(printf '📈 **Daily top links**\n\n%s' "$(cat top-links.txt)")"
+          PAYLOAD="$(jq -n --arg content "$MESSAGE" '{content: $content}')"
+
+          curl --fail --silent --show-error \
+            --header "Content-Type: application/json" \
+            --data "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
