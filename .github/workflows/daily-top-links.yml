@@ -2,7 +2,7 @@ name: Daily Top Links
 
 on:
   schedule:
-    - cron: "4 19 * * *"
+    - cron: "7 19 * * *"
       timezone: "Asia/Kolkata"
   workflow_dispatch:
 
