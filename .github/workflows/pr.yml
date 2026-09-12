@@ -49,8 +49,13 @@ jobs:
         continue-on-error: true
 
       - name: Run test coverage
-        run: bun run test:coverage
+        id: coverage
         working-directory: server
+        run: |
+          set -o pipefail
+          bun run test:coverage 2>&1 | tee coverage-output.txt
+          SUMMARY=$(grep "All files" coverage-output.txt | tail -1 | xargs)
+          echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
 
       - name: Build
         working-directory: server
